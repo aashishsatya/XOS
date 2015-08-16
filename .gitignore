@@ -31,3 +31,7 @@
 # Debug files
 *.dSYM/
 
+# Backup and vim temporary files
+*~
+*.swp
+*.swo
