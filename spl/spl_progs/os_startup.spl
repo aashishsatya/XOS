@@ -7,8 +7,9 @@
 load(7, 1);
 load(8, 2);
 
+
 // load interrupt routine 7
-// I think that's exit
+// I think that's HALT
 
 load(23, 17);
 load(24, 18);
@@ -73,6 +74,20 @@ SP = 3 * 512;
 // each page is 512 words long, stack starts from page number 28, so
 
 [28 * 512] = 0;
+
+// load interrupt routine 1
+// stored in disk blocks 5 and 6
+// in memory stored in pages 11 and 12
+
+load(11, 5);
+load(12, 6);
+
+// load the timer interrupt routine
+// stored in disk blocks 3 and 4
+// stored in pages 9 and 10 in memory
+
+load(9, 3);
+load(10, 4);
 
 // use ireturn to transfer control to user program
 // ireturn translates to IRET machine instruction
