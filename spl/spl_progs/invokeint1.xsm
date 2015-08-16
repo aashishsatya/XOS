@@ -1,4 +1,4 @@
- START
+START
 MOV R0, "Before INT"
 OUT R0
 INT 1
