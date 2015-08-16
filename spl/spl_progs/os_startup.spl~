@@ -7,8 +7,9 @@
 load(7, 1);
 load(8, 2);
 
+
 // load interrupt routine 7
-// I think that's exit
+// I think that's HALT
 
 load(23, 17);
 load(24, 18);
@@ -55,10 +56,9 @@ PTLR = 4;	// by default
 
 [READY_LIST + 1] = 2; // set the entry for STATE as running
 
-// using breakpoints for debugging
-// not really required
+// breakpoints can be used for debugging
 
-breakpoint;
+// breakpoint;
 
 // the value of SP must be set to its starting logical address,
 // which starts form the 3 * 512 = 1536)
@@ -74,6 +74,13 @@ SP = 3 * 512;
 // each page is 512 words long, stack starts from page number 28, so
 
 [28 * 512] = 0;
+
+// load interrupt routine 1
+// stored in disk blocks 5 and 6
+// in memory stored in pages 11 and 12
+
+load(11, 5);
+load(12, 6);
 
 // use ireturn to transfer control to user program
 // ireturn translates to IRET machine instruction
