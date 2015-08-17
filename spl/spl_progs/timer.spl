@@ -23,7 +23,7 @@ alias newPCB S4;
 
 while (newPID % 32 != currentPID) do
 
-	newPCB = READY_LIST + 32 * newPID;
+	newPCB = READY_LIST + 32 * (newPID % 32);
 	
 	// check the state corresponding to newPCB
 	
