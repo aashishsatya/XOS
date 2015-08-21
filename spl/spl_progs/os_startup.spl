@@ -1,11 +1,13 @@
-// OS Startup Code for XOS
+// OS Startup code for XOS
 
-// load the exception handler
+// we need load only a single process
+// so this file was built on top of the version from Stage 5
+
+// format of load is load (page_number, block_number); 
+
 // exception handler is stored in blocks 1 and 2 in the disk
 // load them to memory blocks 7 and 8
 // see memory and disk organization
-
-// format of load is load (page_number, block_number); 
 
 load(7, 1);
 load(8, 2);
@@ -92,68 +94,23 @@ load(12, 6);
 load(9, 3);
 load(10, 4);
 
-// load and set up the process structure for the second process
+// we're creating a new file
+// so a new FAT entry is to be created
 
-// set the PID of the second process as 1
-[READY_LIST + 32] = 1;
+// before that LOAD the FAT and Disk Free List onto memory
 
-// allocate space in memory
-// INIT already occupies pages 25 to 28
-// so we can start from 29 onwards
-// find the disk block where the code for even is stored
-// the basic block of the file was found to be in block 26 of the disk
-// page 30 in memory will be used as stack
-// anyway load her up
+// load the FAT
+load(5, 19);
 
-load(29, 27);	// we need just the code, not the data block
+// load the Disk Free List
+load(6, 20);
 
-// page table for the process must be set up
-// the starting address for page table is calculated as 1024 + PID x 8
-// this becomes the value for the PTBR
-
-alias PTBR_Process1 S0;
-PTBR_Process1 = 1024 + 1 * 8;
-
-// set up page table entries for memory page 29
-// as well as one for memory page 30 (for the stack)
-// there are four pages for each process
-// set them all up
-
-[PTBR_Process1 + 0] = 29; // Physical Page Number for Logical Page 0
-[PTBR_Process1 + 1] = "01"; // Not referenced and Valid
-[PTBR_Process1 + 2] = -1; // Invalid Page Number for Logical Page 1
-[PTBR_Process1 + 3] = "00"; // Not referenced and Not Valid
-// 'Not valid' because there is only one page of code
-[PTBR_Process1 + 4] = -1; // Physical Page Number for Logical Page 3
-[PTBR_Process1 + 5] = "00"; // Not referenced and Not Valid
-[PTBR_Process1 + 6] = 30; // Physical Page Number for Logical Page 3
-[PTBR_Process1 + 7] = "01"; // Not referenced and Valid
-
-// now we need to set up all the entries in the PCB
-
-// STATE field is set to 1 (ready)
-[READY_LIST + 33] = 1;
-
-// set the PTBR
-// see the structure of the PCB and this'll be clear
-[READY_LIST + 37] = PTBR_Process1;
-[READY_LIST + 38] = 4; // PTLR, this is by default
-
-// set the SP, BP fields which should be the starting
-// LOGICAL address of the process stack
-// logical address will be at 3(rd page) x 512
-[READY_LIST + 34] = 3 * 512; // Sets the entry for BP in the PCB
-[READY_LIST + 35] = 3 * 512; // Sets the entry for SP in the PCB 
-
-// code area of the process starts from logical address 0
-// so IP field is set to zero
-[READY_LIST + 36] = 0;
+// use ireturn to transfer control to user program
+// ireturn translates to IRET machine instruction
 
 // again, breakpoints can be used for debugging
 
 // breakpoint;
 
-// use ireturn to transfer control to user program
-// ireturn translates to IRET machine instruction
-
 ireturn;
+
