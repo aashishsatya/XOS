@@ -60,6 +60,7 @@ PTLR = 4;	// by default
 // an invalid entry is indicated by -1 in the FAT Index field
 // and File Open Counts to zero
 // FILE_TABLE stores the address of the System Wide Open File Table
+
 alias counter S0;			
 counter = 0;
 while ( counter <  128) do			// 64 entries, each of size 2 words
@@ -106,6 +107,18 @@ load(12, 6);
 
 load(9, 3);
 load(10, 4);
+
+// similarly load interrupt routines 2, 3 and 4
+
+// load interrupt routine 2
+load(13, 7)
+load(14, 8)
+// interrupt routine 3
+load(15, 9)
+load(16, 10)
+// interrupt routine 4
+load(17, 11)
+load(18, 12)
 
 // we're creating a new file
 // so a new FAT entry is to be created
