@@ -55,6 +55,20 @@ PTLR = 4;	// by default
 [PTBR + 6] = 28;	// memory for stack
 [PTBR + 7] = "01";
 
+
+// set the entries of the System-Wide Open File Table to invalid
+// an invalid entry is indicated by -1 in the FAT Index field
+// and File Open Counts to zero
+// FILE_TABLE stores the address of the System Wide Open File Table
+
+alias counter S0;			
+counter = 0;
+while ( counter <  128) do			// 64 entries, each of size 2 words
+	[ FILE_TABLE + counter + 0] = -1;	// Set FAT Index to -1
+	[ FILE_TABLE + counter + 1] =  0;	// Set File Open Count to 0
+	counter = counter + 2;			// Move to next entry
+endwhile;
+
 // when there are more than one process in memory, the running process is
 // identified by looking at the STATE field in the Ready List of PCBs
 // this fact will come in use later
