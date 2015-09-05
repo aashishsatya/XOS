@@ -1,0 +1,121 @@
+// Code for interrupt 2
+
+// implements Open and Close system calls
+
+// get the system call number
+// it will be stored in location SP - 1
+// since code is executing in kernel mode, convert to physical address first
+
+alias physicalSP S0;
+physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
+
+// find out the system call number
+
+alias sysCallNo S1;
+sysCallNo = [physicalSP - 1];
+
+// fetch the argument(s) from SP - 2 onwards
+// there is only one argument
+
+alias fileName S2;
+fileName = [physicalSP - 3];	// note the three, not two
+
+if (sysCallNo == 2) then
+
+	// implementation of Open
+	
+	// before that check if file has already been created
+	
+	alias fileCounter S3;
+	fileCounter = 0;
+	
+	// there can be max 64 files
+	// each FAT entry takes 8 words
+	
+	while (fileCounter < 512) do
+	
+		if ([FAT + fileCounter] == fileName) then
+		
+			// break and then process
+			break;			
+			
+		endif;
+		
+		fileCounter = fileCounter + 8;	
+		
+	endwhile;
+	
+	if (fileCounter == 512) then
+	
+		// file not found
+		// return with -1 exit status
+	
+		[physicalSP - 2] = -1;
+		ireturn;
+	
+	endif;
+	
+	// file exists, proceed with formalities
+	
+	// store the file index
+	
+	alias FATIndex S4;
+	FATIndex = FAT + fileCounter;		
+	
+	// search the System-Wide Open File Table for the Index
+	// it starts at memory location 1344
+	
+	alias SWOFTCtr S5;
+	SWOFTCtr = 1344;
+	
+	while (SWOFTCtr < 1471) do
+	
+		if ([SWOFTCtr] == FATIndex) then
+		
+			// variable to store location of entry in SWOFT
+	
+			alias SWOFTIndex S6;
+			SWOFTIndex = SWOFTCtr;
+			
+			// WE HAVEN'T UPDATED THE ENTRY YET
+			
+		endif;
+		
+		SWOFTCtr = SWOFTCtr + 2;
+		
+	endwhile;
+	
+	if (SWOFTCtr >= 1471) then
+	
+		// entry does not exist
+		// so create one
+		
+		// search the SWOFT for a free entry
+		
+		// reusing S3, don't get confused
+		alias newSWOFTIndex S3;
+		newSWOFTIndex = 1344;
+		
+		while (newSWOFTIndex < 1471) do
+		
+			if ([newSWOFTIndex] == -1) then
+			
+				// we have a free slot
+			
+			endif;
+		
+			newSWOFTIndex = newSWOFTIndex + 2;
+		
+		endwhile;
+		
+		
+		
+	endif;
+		
+	
+	
+	
+	
+	
+	
+endif;
