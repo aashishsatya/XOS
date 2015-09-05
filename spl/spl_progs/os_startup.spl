@@ -75,6 +75,17 @@ endwhile;
 
 [READY_LIST + 1] = 2; // set the entry for STATE as running
 
+// set the per-process open file table entries of the INIT process to invalid
+
+counter = 0;
+
+while (counter < 16) do
+
+	[READY_LIST + 15 + counter] = -1;
+	counter = counter + 2;
+	
+endwhile;
+
 // breakpoints can be used for debugging
 
 // breakpoint;
