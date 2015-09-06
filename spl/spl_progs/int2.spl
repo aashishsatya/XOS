@@ -162,6 +162,13 @@ if (sysCallNo == 2) then
 	[FILE_TABLE + SWOFTIndex] = FATIndex;	// store the FAT Index if it hasn't already
 	// if it has it'll just get overwritten with the same value
 	[FILE_TABLE + SWOFTIndex + 1] = [FILE_TABLE + SWOFTIndex + 1] + 1;	// increment count of open instances
-		
+	
+	// return PPOFTIndex
+	// this is the file descriptor for the open instance
+	
+	// NOTE: the returned value is PPOFTIndex / 2
+	[physicalSP - 2] = PPOFTIndex / 2;
+	ireturn;
+			
 // endif for system call number 2	
 endif;
