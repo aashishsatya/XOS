@@ -14,6 +14,10 @@ physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
 alias sysCallNo S1;
 sysCallNo = [physicalSP - 1];
 
+// needed for accessing PPOFT of the processes
+alias currentPCB S5;
+currentPCB = READY_LIST + 32 * ((PTBR - 1024) / 8);	// that expression after 32 is PID of the current process
+
 // HAS NOT BEEN TESTED YET
 
 if (sysCallNo == 2) then
@@ -123,9 +127,6 @@ if (sysCallNo == 2) then
 	// a single file may be opened more than once by the same process
 	// so directly proceed to checking
 	
-	alias currentPCB S5;
-	currentPCB = READY_LIST + 32 * ((PTBR - 1024) / 8);	// that expression after 32 is PID of the current process
-	
 	alias PPOFTIndex S6;
 	PPOFTIndex = 0;
 	
@@ -171,4 +172,32 @@ if (sysCallNo == 2) then
 	ireturn;
 			
 // endif for system call number 2	
+endif;
+
+if (sysCallNo == 3) then
+
+	// implementation of the Close system call
+	
+	alias fileDescriptor S2;
+	fileDescriptor = [physicalSP - 3];
+	
+	if (fileDescriptor > 7 || fileDescriptor < 0) then
+		
+		// invalid entry
+		[physicalSP - 2] = -1;
+		ireturn;
+		
+	endif;
+	
+	// check if the PPOFT entry is valid
+	if ([currentPCB + 15 + fileDescriptor * 2] == -1) then
+	
+		// invalid entry
+		[physicalSP - 2] = -1;
+		ireturn;
+	
+	endif;
+	
+	// we have a valid index to SWOFT 
+
 endif;
