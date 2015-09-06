@@ -38,20 +38,20 @@ if (sysCallNo == 2) then
 	// there can be max 64 files
 	// each FAT entry takes 8 words
 	
-	while (FATIndex < 512) do
+	while (FATIndex < 64) do
 	
-		if ([FAT + FATIndex] == fileName) then
+		if ([FAT + FATIndex * 8] == fileName) then
 		
 			// break and then process
 			break;			
 			
 		endif;
 		
-		FATIndex = FATIndex + 8;	
+		FATIndex = FATIndex + 1;	
 		
 	endwhile;
 	
-	if (FATIndex == 512) then
+	if (FATIndex == 64) then
 	
 		// file not found
 		// return with -1 exit status
@@ -62,17 +62,17 @@ if (sysCallNo == 2) then
 	endif;
 	
 	// file exists, and the index is stored in FATIndex
-	// so to access the file details, go to FAT + FATIndex		
+	// so to access the file details, go to FAT + FATIndex * 8		
 	
 	// now search the System-Wide Open File Table for the Index
-	// it starts at memory location 1344
+	// it starts at memory location 1344 (constant FILE_TABLE)
 	
 	alias SWOFTIndex S4;
 	SWOFTIndex = 0;
 	
-	while (SWOFTIndex < 128) do
+	while (SWOFTIndex < 64) do
 	
-		if ([SWOFTIndex + FILE_TABLE] == FATIndex) then
+		if ([SWOFTIndex * 2 + FILE_TABLE] == FATIndex) then
 		
 			// we have the corresponding SWOFT Entry
 			// break and proceed
@@ -80,11 +80,11 @@ if (sysCallNo == 2) then
 			
 		endif;
 		
-		SWOFTIndex = SWOFTIndex + 2;
+		SWOFTIndex = SWOFTIndex + 1;
 		
 	endwhile;
 	
-	if (SWOFTIndex >= 128) then
+	if (SWOFTIndex >= 64) then
 	
 		// entry does not exist
 		// so create one
@@ -93,20 +93,20 @@ if (sysCallNo == 2) then
 		
 		SWOFTIndex = 0;
 		
-		while (SWOFTIndex < 128) do
+		while (SWOFTIndex < 64) do
 		
-			if ([FILE_TABLE + SWOFTIndex] == -1) then
+			if ([FILE_TABLE + SWOFTIndex * 2] == -1) then
 			
 				// we have a free slot
 				break;
 			
 			endif;
 		
-			SWOFTIndex = SWOFTIndex + 2;
+			SWOFTIndex = SWOFTIndex + 1;
 		
 		endwhile;
 		
-		if (SWOFTIndex >= 128) then
+		if (SWOFTIndex >= 64) then
 		
 			// no free entry found
 			// return with exit status
@@ -116,7 +116,7 @@ if (sysCallNo == 2) then
 		
 		endif;
 		
-		[SWOFTIndex + 1] = 0;	// setting initial file count to zero
+		[SWOFTIndex * 2 + 1] = 0;	// setting initial file count to zero
 		// done because later in the code no matter what the situation is 
 		// (i.e. if we are creating a new entry or reusing an old one, we just increment the file count
 		// for this to work correctly SWOFT must have a legal initial value (which is zero)
@@ -130,20 +130,20 @@ if (sysCallNo == 2) then
 	alias PPOFTIndex S6;
 	PPOFTIndex = 0;
 	
-	while (PPOFTIndex < 16) do
+	while (PPOFTIndex < 8) do
 	
-		if ([currentPCB + 15 + PPOFTIndex] == -1) then
+		if ([currentPCB + 15 + PPOFTIndex * 2] == -1) then
 		
 			// we have a free slot in the PPOFT
 			break;
 		
 		endif;
 		
-		PPOFTIndex = PPOFTIndex + 2;
+		PPOFTIndex = PPOFTIndex + 1;
 	
 	endwhile;
 	
-	if (PPOFTIndex == 16) then
+	if (PPOFTIndex == 8) then
 	
 		// no free entry found
 		// return with exit status
@@ -154,21 +154,19 @@ if (sysCallNo == 2) then
 	endif;
 	
 	// set the entries of the PPOFT
-	[currentPCB + 15 + PPOFTIndex] = SWOFTIndex;	// pointer to SWOFT entry
-	[currentPCB + 15 + PPOFTIndex + 1] = 0;	// LSEEK position
+	[currentPCB + 15 + PPOFTIndex * 2] = SWOFTIndex;	// pointer to SWOFT entry
+	[currentPCB + 15 + PPOFTIndex * 2 + 1] = 0;	// LSEEK position
 	
 	// we have a valid index in the SWOFT stored in SWOFTIndex
 	// update the same
 	
-	[FILE_TABLE + SWOFTIndex] = FATIndex;	// store the FAT Index if it hasn't already
+	[FILE_TABLE + SWOFTIndex * 2] = FATIndex;	// store the FAT Index if it hasn't already
 	// if it has it'll just get overwritten with the same value
-	[FILE_TABLE + SWOFTIndex + 1] = [FILE_TABLE + SWOFTIndex + 1] + 1;	// increment count of open instances
+	[FILE_TABLE + SWOFTIndex * 2 + 1] = [FILE_TABLE + SWOFTIndex * 2 + 1] + 1;	// increment count of open instances
 	
 	// return PPOFTIndex
 	// this is the file descriptor for the open instance
-	
-	// NOTE: the returned value is PPOFTIndex / 2
-	[physicalSP - 2] = PPOFTIndex / 2;
+	[physicalSP - 2] = PPOFTIndex;
 	ireturn;
 			
 // endif for system call number 2	
