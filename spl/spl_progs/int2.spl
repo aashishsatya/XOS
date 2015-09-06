@@ -14,19 +14,19 @@ physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
 alias sysCallNo S1;
 sysCallNo = [physicalSP - 1];
 
-// fetch the argument(s) from SP - 2 onwards
-// there is only one argument
-
-alias fileName S2;
-fileName = [physicalSP - 3];	// note the three, not two
-
 // HAS NOT BEEN TESTED YET
 
 if (sysCallNo == 2) then
 
 	// implementation of Open
 	
-	// before that check if file has already been created
+	// fetch the argument(s) from SP - 2 onwards
+	// there is only one argument
+
+	alias fileName S2;
+	fileName = [physicalSP - 3];	// note the three, not two
+	
+	// check if file has already been created
 	
 	alias FATIndex S3;
 	FATIndex = 0;
