@@ -196,6 +196,24 @@ if (sysCallNo == 3) then
 	
 	endif;
 	
-	// we have a valid index to SWOFT 
-
+	// we have a valid index to SWOFT
+	// index into it and decrement file count
+	[FILE_TABLE + [currentPCB + 15 + fileDescriptor * 2] * 2 + 1] = [FILE_TABLE + [currentPCB + 15 + fileDescriptor * 2] * 2 + 1] - 1;
+	if ([FILE_TABLE + [currentPCB + 15 + fileDescriptor * 2] * 2 + 1] == 0) then
+	
+		// there are no more references to the file
+		// invalidate the entry in SWOFT
+		
+		[FILE_TABLE + [currentPCB + 15 + fileDescriptor * 2] * 2] = -1;
+	
+	endif;
+	
+	// invalidate the PPOFT by setting fields to -1
+	[currentPCB + 15 + fileDescriptor * 2] = -1;
+	[currentPCB + 15 + fileDescriptor * 2 + 1] = -1;
+	
+	// return with success as exit status
+	[physicalSP - 2] = 0;
+	ireturn;
+	
 endif;
