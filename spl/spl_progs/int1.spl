@@ -55,7 +55,7 @@ if (sysCallNo == 1) then
 	// note that now fileCounter is at 512, which is exactly
 	// where Disk Free List begins
 	// so simply start searching from there
-	// 1024 = 512 + 447
+	// 959 = 512 + 447
 	// 447 because the remaining space is used as swap area
 	
 	while (fileCounter < 959) do
@@ -157,8 +157,133 @@ if (sysCallNo == 1) then
 	
 endif;
 
-//if (sysCallNo == 4) then
+if (sysCallNo == 4) then
 
 	// implementation of Delete
 	
-//endif;
+	// check if file exists
+	
+	alias FATIndex S3;
+	FATIndex = 0;
+	
+	// there can be max 64 files
+	// each FAT entry takes 8 words
+	
+	while (FATIndex < 64) do
+	
+		if ([FAT + FATIndex * 8] == fileName) then
+		
+			// break and then process
+			break;			
+			
+		endif;
+		
+		FATIndex = FATIndex + 1;	
+		
+	endwhile;
+	
+	if (FATIndex == 64) then
+	
+		// file does not exist
+			
+		[physicalSP - 2] = -1;
+		ireturn;
+	
+	endif;
+	
+	// now search the System-Wide Open File Table for the Index
+	// it starts at memory location 1344 (constant FILE_TABLE)
+	
+	alias SWOFTIndex S4;
+	SWOFTIndex = 0;
+	
+	while (SWOFTIndex < 64) do
+	
+		if ([SWOFTIndex * 2 + FILE_TABLE] == FATIndex) then
+		
+			// we have the corresponding SWOFT Entry
+			// break and proceed
+			break;
+			
+		endif;
+		
+		SWOFTIndex = SWOFTIndex + 1;
+		
+	endwhile;
+	
+	// we assume that if the file has been created properly,
+	// the SWOFTIndex would also have been set properly
+	
+	if ([SWOFTIndex * 2 + FILE_TABLE + 1] > 0) then
+	
+		// some process has kept the file open
+		// so can't delete
+		
+		[physicalSP - 2] = -1;
+		ireturn;
+	
+	endif;
+	
+	alias basicDBNo S5;	// basic data block number
+	// goes from 0 to 255 and ensures that each of those blocks is replaced with the empty string
+	basicDBNo = 0;
+	
+	alias blockToClear S6;
+	alias counter S7;
+	
+	while (basicDBNo < 256) do
+	
+		// load the basic block onto the OS scratchpad
+		load(1, [FATIndex * 8 + 2]);
+		
+		// get the block number to delete
+		blockToClear = [SCRATCHPAD + basicDBNo];
+		
+		// load that block onto the scratchpad
+		load(1, blockToClear);
+		
+		// invalidate all entries of that block
+		
+		counter = 0;
+		
+		while (counter < 512) do
+		
+			[SCRATCHPAD + counter] = "";		
+			counter = counter + 1;
+		
+		endwhile;
+		
+		// store the block back
+		store(1, blockToClear);
+		
+		// set the data block as unused in the disk free list
+		// disk free list is stored from word number 3072 in memory
+		[3072 + blockToClear] = 0;		
+		
+		basicDBNo = basicDBNo + 1;
+	
+	endwhile;
+	
+	// erase all values of the basic block 
+	
+	load(1, [FATIndex * 8 + 2]);
+	counter = 0;
+	while (counter < 512) do
+		[SCRATCHPAD + counter] = "";
+		counter = counter + 1;	
+	endwhile;
+	store(1, [FATIndex * 8 + 2]);
+	
+	// invalidate the FAT entry
+	[FATIndex * 8] = -1;
+	[FATIndex * 8 + 2] = -1;
+	
+	// store back the FAT and Disk Free List from the memory to disk
+	store(5, 19);	// FAT
+	store(6, 20);	// Disk Free List
+	
+	// return with a zero
+	[physicalSP - 2] = 0;
+	ireturn;
+	
+endif;
