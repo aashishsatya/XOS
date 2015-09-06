@@ -20,32 +20,34 @@ sysCallNo = [physicalSP - 1];
 alias fileName S2;
 fileName = [physicalSP - 3];	// note the three, not two
 
+// HAS NOT BEEN TESTED YET
+
 if (sysCallNo == 2) then
 
 	// implementation of Open
 	
 	// before that check if file has already been created
 	
-	alias fileCounter S3;
-	fileCounter = 0;
+	alias FATIndex S3;
+	FATIndex = 0;
 	
 	// there can be max 64 files
 	// each FAT entry takes 8 words
 	
-	while (fileCounter < 512) do
+	while (FATIndex < 512) do
 	
-		if ([FAT + fileCounter] == fileName) then
+		if ([FAT + FATIndex] == fileName) then
 		
 			// break and then process
 			break;			
 			
 		endif;
 		
-		fileCounter = fileCounter + 8;	
+		FATIndex = FATIndex + 8;	
 		
 	endwhile;
 	
-	if (fileCounter == 512) then
+	if (FATIndex == 512) then
 	
 		// file not found
 		// return with -1 exit status
@@ -55,67 +57,111 @@ if (sysCallNo == 2) then
 	
 	endif;
 	
-	// file exists, proceed with formalities
+	// file exists, and the index is stored in FATIndex
+	// so to access the file details, go to FAT + FATIndex		
 	
-	// store the file index
-	
-	alias FATIndex S4;
-	FATIndex = FAT + fileCounter;		
-	
-	// search the System-Wide Open File Table for the Index
+	// now search the System-Wide Open File Table for the Index
 	// it starts at memory location 1344
 	
-	alias SWOFTCtr S5;
-	SWOFTCtr = 1344;
+	alias SWOFTIndex S4;
+	SWOFTIndex = 0;
 	
-	while (SWOFTCtr < 1471) do
+	while (SWOFTIndex < 128) do
 	
-		if ([SWOFTCtr] == FATIndex) then
+		if ([SWOFTIndex + FILE_TABLE] == FATIndex) then
 		
-			// variable to store location of entry in SWOFT
-	
-			alias SWOFTIndex S6;
-			SWOFTIndex = SWOFTCtr;
-			
-			// WE HAVEN'T UPDATED THE ENTRY YET
+			// we have the corresponding SWOFT Entry
+			// break and proceed
+			break;
 			
 		endif;
 		
-		SWOFTCtr = SWOFTCtr + 2;
+		SWOFTIndex = SWOFTIndex + 2;
 		
 	endwhile;
 	
-	if (SWOFTCtr >= 1471) then
+	if (SWOFTIndex >= 128) then
 	
 		// entry does not exist
 		// so create one
 		
 		// search the SWOFT for a free entry
 		
-		// reusing S3, don't get confused
-		alias newSWOFTIndex S3;
-		newSWOFTIndex = 1344;
+		SWOFTIndex = 0;
 		
-		while (newSWOFTIndex < 1471) do
+		while (SWOFTIndex < 128) do
 		
-			if ([newSWOFTIndex] == -1) then
+			if ([FILE_TABLE + SWOFTIndex] == -1) then
 			
 				// we have a free slot
+				break;
 			
 			endif;
 		
-			newSWOFTIndex = newSWOFTIndex + 2;
+			SWOFTIndex = SWOFTIndex + 2;
 		
 		endwhile;
 		
+		if (SWOFTIndex >= 128) then
 		
+			// no free entry found
+			// return with exit status
+			
+			[physicalSP - 2] = -1;
+			ireturn;
+		
+		endif;
+		
+		[SWOFTIndex + 1] = 0;	// setting initial file count to zero
+		// done because later in the code no matter what the situation is 
+		// (i.e. if we are creating a new entry or reusing an old one, we just increment the file count
+		// for this to work correctly SWOFT must have a legal initial value (which is zero)
 		
 	endif;
+	
+	// store the details of the file in the Per-Process Open File Table in its PCB
+	// a single file may be opened more than once by the same process
+	// so directly proceed to checking
+	
+	alias currentPCB S5;
+	currentPCB = READY_LIST + 32 * ((PTBR - 1024) / 8);	// that expression after 32 is PID of the current process
+	
+	alias PPOFTIndex S6;
+	PPOFTIndex = 0;
+	
+	while (PPOFTIndex < 16) do
+	
+		if ([currentPCB + 15 + PPOFTIndex] == -1) then
 		
+			// we have a free slot in the PPOFT
+			break;
+		
+		endif;
+		
+		PPOFTIndex = PPOFTIndex + 2;
 	
+	endwhile;
 	
+	if (PPOFTIndex == 16) then
 	
+		// no free entry found
+		// return with exit status
+			
+		[physicalSP - 2] = -1;
+		ireturn;
 	
+	endif;
 	
+	// set the entries of the PPOFT
+	[currentPCB + 15 + PPOFTIndex] = SWOFTIndex;	// pointer to SWOFT entry
+	[currentPCB + 15 + PPOFTIndex + 1] = 0;	// LSEEK position
 	
+	// we have a valid index in the SWOFT stored in SWOFTIndex
+	// update the same
+	
+	[FILE_TABLE + SWOFTIndex] = FATIndex;	// store the FAT Index if it hasn't already
+	// if it has it'll just get overwritten with the same value
+	[FILE_TABLE + SWOFTIndex + 1] = [FILE_TABLE + SWOFTIndex + 1] + 1;	// increment count of open instances
+		
+// endif for system call number 2	
 endif;
