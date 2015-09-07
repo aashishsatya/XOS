@@ -217,9 +217,6 @@ if (sysCallNo == 4) then
 			continue;
 		endif;
 		
-		print "blockToClear:";
-		print blockToClear;
-		
 		// load that block onto the scratchpad
 		load(1, blockToClear);
 		
