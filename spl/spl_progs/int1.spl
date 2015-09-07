@@ -93,7 +93,7 @@ if (sysCallNo == 1) then
 	// initialize entries of the FAT Index
 	[FAT + FATIndex * 8] = fileName;
 	[FAT + FATIndex * 8 + 1] = 0;	// file size
-	[FAT + FATIndex * 8 + 2] = DFListIndex;
+	[FAT + FATIndex * 8 + 2] = DFListIndex;	// block size of basic block
 	
 	// load the basic block of file to be created
 	// use memory page 1 (which was earlier for OS Startup code)
@@ -185,7 +185,7 @@ if (sysCallNo == 4) then
 	// we assume that if the file has been created properly,
 	// the SWOFTIndex would also have been set properly
 	
-	if ([SWOFTIndex * 2 + FILE_TABLE + 1] > 0) then
+	if (SWOFTIndex < 64 && [SWOFTIndex * 2 + FILE_TABLE + 1] > 0) then
 	
 		// some process has kept the file open
 		// so can't delete
@@ -205,10 +205,20 @@ if (sysCallNo == 4) then
 	while (basicDBNo < 256) do
 	
 		// load the basic block onto the OS scratchpad
-		load(1, [FATIndex * 8 + 2]);
+		load(1, [FAT + FATIndex * 8 + 2]);
 		
 		// get the block number to delete
 		blockToClear = [SCRATCHPAD + basicDBNo];
+		
+		// incremented soon because we might come across continue
+		basicDBNo = basicDBNo + 1;
+		
+		if (blockToClear == -1) then
+			continue;
+		endif;
+		
+		print "blockToClear:";
+		print blockToClear;
 		
 		// load that block onto the scratchpad
 		load(1, blockToClear);
@@ -229,25 +239,23 @@ if (sysCallNo == 4) then
 		
 		// set the data block as unused in the disk free list
 		// disk free list is stored from word number 3072 in memory
-		[3072 + blockToClear] = 0;		
-		
-		basicDBNo = basicDBNo + 1;
+		[3072 + blockToClear] = 0;
 	
 	endwhile;
 	
 	// erase all values of the basic block 
 	
-	load(1, [FATIndex * 8 + 2]);
+	load(1, [FAT + FATIndex * 8 + 2]);
 	counter = 0;
 	while (counter < 512) do
 		[SCRATCHPAD + counter] = "";
 		counter = counter + 1;	
 	endwhile;
-	store(1, [FATIndex * 8 + 2]);
+	store(1, [FAT + FATIndex * 8 + 2]);
 	
 	// invalidate the FAT entry
-	[FATIndex * 8] = -1;
-	[FATIndex * 8 + 2] = -1;
+	[FAT + FATIndex * 8] = -1;
+	[FAT + FATIndex * 8 + 2] = -1;
 	
 	// store back the FAT and Disk Free List from the memory to disk
 	store(5, 19);	// FAT
