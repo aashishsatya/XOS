@@ -24,15 +24,15 @@ if (sysCallNo == 1) then
 	
 	// before that check if file has already been created
 	
-	alias fileCounter S3;
-	fileCounter = 0;
+	alias FATIndex S3;
+	FATIndex = 0;
 	
 	// there can be max 64 files
 	// each FAT entry takes 8 words
 	
-	while (fileCounter < 512) do
-	
-		if ([FAT + fileCounter] == fileName) then
+	while (FATIndex < 64) do
+		
+		if ([FAT + FATIndex * 8] == fileName) then
 		
 			// return after setting status value zero
 			// return value is stored in SP - 2
@@ -43,7 +43,7 @@ if (sysCallNo == 1) then
 			
 		endif;
 		
-		fileCounter = fileCounter + 8;	
+		FATIndex = FATIndex + 1;	
 		
 	endwhile;
 	
@@ -52,108 +52,79 @@ if (sysCallNo == 1) then
 	
 	// search the memory copy of the disk free list
 	
-	// note that now fileCounter is at 512, which is exactly
 	// where Disk Free List begins
 	// so simply start searching from there
-	// 959 = 512 + 447
 	// 447 because the remaining space is used as swap area
 	
-	while (fileCounter < 959) do
+	alias DFListIndex S4;	// Disk Free List Index
+	DFListIndex = 0;
 	
-		if ([FAT + fileCounter] == 0) then
-		
-			// we have space for file
-		
-			// now search the memory copy of FAT for a free entry
-		
-			alias FATFreeCounter S4;
-			FATFreeCounter = 0;
-		
-			while (FATFreeCounter < 512) do
-		
-				if ([FAT + FATFreeCounter + 2] == -1) then
-			
-					// space for new file found in FAT
-				
-					// set file name
-					[FAT + FATFreeCounter] = fileName;
-					// set file size
-					[FAT + FATFreeCounter + 1] = 0;
-					// set block number of basic block
-					[FAT + FATFreeCounter + 2] = fileCounter / 8;
-				
-					// load the basic block of file to be created
-					// use memory page 1 (which was earlier for OS Startup code)
-					// because it is no longer required
-					load(1, fileCounter / 8);
-				
-					// set all the words in the basic block to be -1
-					alias ctr S5;
-					ctr = 512;	// OS Startup code resides in page 1
-					
-					// 768 = 512 + 256
-				
-					while (ctr < 768) do
-				
-						// set the value of each entry in basic block to -1
-						[ctr] = -1;
-						ctr = ctr + 1;
-				
-					endwhile;
-					
-					// nothing done with the header area
-				
-					// store the basic block residing in the scratchpad back to the disk
-					// format of store is store(page_number, block_number);
-					store(1, fileCounter / 8);
-				
-					// set the entry in the disk free list for the basic block to 1
-					// this is to indicate that this block has been allocated
-					[FAT + fileCounter] = 1;
-				
-					// store the updated copies of FAT and Disk Free List onto the disk
-					// store the FAT
-					store(5, 19);
-					// store the Disk Free List
-					store(6, 20);
-				
-					// return from the system call with a zero value
-				
-					[physicalSP - 2] = 0;
-					ireturn;
-				
-				endif;
-				
-				FATFreeCounter = FATFreeCounter + 8;
-		
-			endwhile;
-		
-			if (FATFreeCounter == 512) then
-		
-				// no space in FAT
-				// return with failure
-		
-				[physicalSP - 2] = -1;
-				ireturn;		
-		
-			endif;
-		
-		endif;
-		
-		fileCounter = fileCounter + 1;
-	
+	while (DFListIndex < 447) do		
+		if ([FAT + 512 + DFListIndex] == 0) then		
+			break;
+		endif;				
+		DFListIndex = DFListIndex + 1;			
 	endwhile;
 	
-	if (fileCounter == 959) then
-	
-		// no space for a new file
-		// return with error
-		
-		[physicalSP - 2] = 0;
-		ireturn;
-	
+	if (DFListIndex == 447) then		
+		// no valid entry
+		[physicalSP - 2] = -1;
+		ireturn;			
 	endif;
 	
+	// find a free slot in the FAT
+	
+	FATIndex = 0;
+	while (FATIndex < 64) do	
+		if ([FAT + FATIndex * 8 + 2] == -1) then
+			break;		
+		endif;		
+		FATIndex = FATIndex + 1;	
+	endwhile;
+	
+	if (FATIndex == 64) then
+		[physicalSP - 2] = -1;
+		ireturn;	
+	endif;
+	
+	// we have a valid block from disk free list whose index stored in DFListIndex
+	// and a FAT entry index stored in FATIndex
+	
+	// initialize entries of the FAT Index
+	[FAT + FATIndex * 8] = fileName;
+	[FAT + FATIndex * 8 + 1] = 0;	// file size
+	[FAT + FATIndex * 8 + 2] = DFListIndex;
+	
+	// load the basic block of file to be created
+	// use memory page 1 (which was earlier for OS Startup code)
+	// because it is no longer required
+	load(1, DFListIndex);
+				
+	// set all the words in the basic block to be -1
+	alias ctr S5;
+	ctr = 0;	// OS Startup code resides in page 1
+	
+	while (ctr < 256) do
+				
+		// set the value of each entry in basic block to -1
+		[SCRATCHPAD + ctr] = -1;
+		ctr = ctr + 1;
+				
+	endwhile;
+	
+	// write the basic block back
+	store(1, DFListIndex);
+	
+	// set entry in DF List for basic block as 1 (used)
+	[FAT + 512 + DFListIndex] = 1;
+	
+	// store the updated copies of FAT and Disk Free List onto the disk
+	store(5, 19);	// store the FAT
+	store(6, 20);	// store the Disk Free List
+	
+	// return with success as exit status
+	[physicalSP - 2] = 0;
+	ireturn;	
 	
 endif;
 
