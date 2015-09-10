@@ -18,14 +18,11 @@ sysCallNo = [physicalSP - 1];
 alias currentPCB S5;
 currentPCB = READY_LIST + 32 * ((PTBR - 1024) / 8);	// that expression after 32 is PID of the current process
 
-// HAS NOT BEEN TESTED YET
-
 if (sysCallNo == 2) then
 
 	// implementation of Open
 	
-	// fetch the argument(s) from SP - 2 onwards
-	// there is only one argument
+	// get the file name
 
 	alias fileName S2;
 	fileName = [physicalSP - 3];	// note the three, not two

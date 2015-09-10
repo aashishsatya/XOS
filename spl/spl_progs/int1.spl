@@ -52,8 +52,8 @@ if (sysCallNo == 1) then
 	
 	// search the memory copy of the disk free list
 	
-	// where Disk Free List begins
-	// so simply start searching from there
+	// Disk Free List is stored after FAT
+	// So FAT + 512 should get you straight there
 	// 447 because the remaining space is used as swap area
 	
 	alias DFListIndex S4;	// Disk Free List Index
