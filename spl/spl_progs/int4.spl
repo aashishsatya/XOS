@@ -21,7 +21,7 @@ if (sysCallNo == 5) then
 	// implementation of the Write system call
 	
 	alias fileDescriptor S3;
-	alias wordToWrite S4;
+	alias wordToWrite S9;
 	
 	// note that file descriptor is pushed first and then the word to write
 	// so get the arguments correspondingly
@@ -55,19 +55,16 @@ if (sysCallNo == 5) then
 	// use the LSEEK position and find the block number of the disk to write to
 	// this is obtained by LSEEKPosition / 512
 	
-	alias blockToWriteTo S8;
-	blockToWriteTo = LSEEKPosition / 512;
+	alias blockNoInBasicBlock S8;
+	blockNoInBasicBlock = LSEEKPosition / 512;
 	
-	if ([SCRATCHPAD + blockToWriteTo] == -1) then
+	if ([SCRATCHPAD + blockNoInBasicBlock] == -1) then
 		
 		// need to allocate a new block
 		
 		// find a free block in the disk
 		
 		// search the memory copy of the disk free list
-	
-		// where Disk Free List begins
-		// so simply start searching from there
 		// 447 because the remaining space is used as swap area
 		
 		alias DFListIndex S4;	// Disk Free List Index
@@ -91,11 +88,11 @@ if (sysCallNo == 5) then
 		// set 1 in the entry for free block in the disk free list
 		[FAT + 512 + DFListIndex] = 1;		
 		// add the block to the basic block of the file
-		[SCRATCHPAD + blockToWriteTo] = DFListIndex;
+		[SCRATCHPAD + blockNoInBasicBlock] = DFListIndex;
 		// commit the basic block to the disk
 		store(1, [FAT + FATIndex * 8 + 2]);
 		// increment file size in FAT entry
-		[FAT + FATIndex * 8 + 1] = [FAT + FATIndex * 8 + 1] + 1;
+		[FAT + FATIndex * 8 + 1] = [FAT + FATIndex * 8 + 1] + 512;
 		// commit the FAT and disk free list
 		store(5, 19);	// store the FAT
 		store(6, 20);	// store the Disk Free List
@@ -103,11 +100,14 @@ if (sysCallNo == 5) then
 	endif;
 	
 	// fetch the block from the disk to the scratchpad
-	load(1, [SCRATCHPAD + blockToWriteTo]);	
+	alias blockToWriteTo S10;
+	blockToWriteTo = [SCRATCHPAD + blockNoInBasicBlock];
+	load(1, blockToWriteTo);
 	// write the argument to disk
 	[SCRATCHPAD + LSEEKPosition % 512] = wordToWrite;
+	print wordToWrite;
 	// store the block back to the disk
-	store(1, [SCRATCHPAD + blockToWriteTo]);
+	store(1, blockToWriteTo);
 	// increment the LSEEKPosition by 1
 	[currentPCB + 15 + fileDescriptor * 2 + 1] = [currentPCB + 15 + fileDescriptor * 2 + 1] + 1;
 	
