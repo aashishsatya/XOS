@@ -19,7 +19,7 @@ integer main()
 	a = Write(fileDesc, b);
 	print("Aashish:");
 	print(a);
-	a = Write(fileDesc, b);
+	a = Write(fileDesc, c);
 	print("Satya:");
 	print(a);
 	return 0;

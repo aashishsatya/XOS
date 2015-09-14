@@ -3,27 +3,28 @@ decl
 	string b;
 	string c;
 	integer status;
+	integer fileDescriptor;
 enddecl
 integer main()
 {	
 	status = Create("myfile.dat");
 	print("creation:");
 	print(status);
-	b = "fish";
+	b = "carpe";
 	c = "diem";
-	status = Open("myfile.dat");
+	fileDescriptor = Open("myfile.dat");
 	print("opening:");
 	print(status);
-	status = Write(0, b);
+	status = Write(fileDescriptor, b);
 	print("carpe:");
 	print(status);
-	status = Write(0, c);
+	status = Write(fileDescriptor, c);
 	print("diem:");
 	print(status);
 	
 	// first part of the story complete
 	
-	status = Close(0);
+	status = Close(fileDescriptor);
 	print("Closing:");
 	print(status);
 	
@@ -32,24 +33,26 @@ integer main()
 	print("Reopen:");
 	print(status);
 	// read the first word
-	status = Read(0, a);
+	status = Read(fileDescriptor, a);
 	print("carpe:");
 	print(status);
 	print("Word read:");
 	print(a);
 	// read the next word
-	status = Read(0, b);
+	status = Read(fileDescriptor, b);
 	print("diem:");
 	print(status);
 	print("Word read:");
 	print(b);
-	//  try reading the next word
-	status = Read(0, a);
-	print("Read agn:");	// expected -1
+	
+	// try setting lseek to a huge value
+	status = Seek(fileDescriptor, 520);
+	print("Try bad lseek:");
 	print(status);
+	
 	// close file
-	status = Close(0);
+	status = Close(fileDescriptor);
 	print("Closing:");
 	print(status);		
-	return 0;
+	return fileDescriptor;
 }
