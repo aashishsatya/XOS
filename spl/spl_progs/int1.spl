@@ -73,7 +73,7 @@ if (sysCallNo == 1) then
 	endif;
 	
 	// find a free slot in the FAT
-	
+		
 	FATIndex = 0;
 	while (FATIndex < 64) do	
 		if ([FAT + FATIndex * 8 + 2] == -1) then
