@@ -64,16 +64,10 @@ PTLR = 4;	// by default
 alias counter S0;			
 counter = 0;
 while ( counter <  128) do			// 64 entries, each of size 2 words
-	[ FILE_TABLE + counter + 0] = -1;	// Set FAT Index to -1
-	[ FILE_TABLE + counter + 1] =  0;	// Set File Open Count to 0
+	[FILE_TABLE + counter + 0] = -1;	// Set FAT Index to -1
+	[FILE_TABLE + counter + 1] =  0;	// Set File Open Count to 0
 	counter = counter + 2;			// Move to next entry
 endwhile;
-
-// when there are more than one process in memory, the running process is
-// identified by looking at the STATE field in the Ready List of PCBs
-// this fact will come in use later
-
-[READY_LIST + 1] = 2; // set the entry for STATE as running
 
 // set the per-process open file table entries of the INIT process to invalid
 
@@ -130,6 +124,15 @@ load(16, 10);
 // interrupt routine 4
 load(17, 11);
 load(18, 12);
+// interrupt routine 5
+load(19, 13);
+load(20, 14);
+// interrupt routine 6
+load(21, 15);
+load(22, 16);
+// interrupt routine 7
+load(23, 17);
+load(24, 18);
 
 // we're creating a new file
 // so a new FAT entry is to be created
@@ -142,6 +145,36 @@ load(5, 19);
 // load the Disk Free List
 load(6, 20);
 
+// assign values to Memory Free List
+
+counter = 0;
+while (counter < 29) do
+	// pages till 24 system reserved
+	// then till 28 used by INIT
+	[MEM_LIST + counter] = 1;	// set as used
+	counter = counter + 1;
+endwhile;
+while (counter < 64) do
+	// set as available
+	[MEM_LIST + counter] = 0;
+	counter = counter + 1;
+endwhile;
+
+// initialize all PCBs with STATE field zero
+
+counter = 0;
+while (counter < 32) do
+	// 32 because there can be 32 processes in memory
+	[READY_LIST + counter * 32 + 1] = 0;
+	counter = counter + 1;
+endwhile;
+
+// when there are more than one process in memory, the running process is
+// identified by looking at the STATE field in the Ready List of PCBs
+// this fact will come in use later
+
+[READY_LIST + 1] = 2; // set the PCB entry of INIT for STATE as running
+
 // use ireturn to transfer control to user program
 // ireturn translates to IRET machine instruction
 
@@ -150,4 +183,3 @@ load(6, 20);
 // breakpoint;
 
 ireturn;
-
