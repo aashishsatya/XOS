@@ -47,7 +47,6 @@ if (sysCallNo == 9) then
 	if (FATIndex == 64) then	
 		// file does not exist			
 		[physicalSP - 2] = -1;
-		print "No file";
 		ireturn;	
 	endif;
 	
@@ -73,7 +72,6 @@ if (sysCallNo == 9) then
 	if (countCodeBlocksNew > 3) then
 		// invalid file, program can have only three pages of code
 		[physicalSP - 2] = -1;
-		print "InvCode";
 		ireturn;
 	endif;
 	
@@ -116,7 +114,6 @@ if (sysCallNo == 9) then
 		if (counter == 64) then
 			// not enough memory
 			[physicalSP - 2] = -1;
-			print "NoMem";
 			ireturn;
 		endif;
 		
@@ -154,8 +151,6 @@ if (sysCallNo == 9) then
 		load([PTBR + counter * 2], [SCRATCHPAD + counter]);
 		counter = counter + 1;
 	endwhile;
-	
-	print "MemAllocDone";
 		
 	// close all files opened by the current process
 		
@@ -179,9 +174,6 @@ if (sysCallNo == 9) then
 		
 	// reset SP to 3 * 512
 	SP = 3 * 512;
-	
-	print "StackAt";
-	print [PTBR + 2 * (SP / 512)];
 		
 	// store zero on top of the stack
 	physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
