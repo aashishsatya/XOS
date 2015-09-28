@@ -190,3 +190,16 @@ if (sysCallNo == 11) then
 	ireturn;	// WHAT'S THE CASE FOR FAILURE?
 	
 endif;
+
+if (sysCallNo == 12) then
+	
+	// validate parent entry (can it be otherwise?)
+	if ([currentPCB + 31] < 0 || [currentPCB + 31] > 31) then
+		[physicalSP - 2] = -1;
+		ireturn;
+	endif;
+	
+	[physicalSP - 2] = [currentPCB + 31];
+	ireturn;
+	
+endif;
