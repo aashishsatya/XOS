@@ -181,3 +181,12 @@ if (sysCallNo == 9) then
 	ireturn;	// WHAT ABOUT THE RETURN VALUE?
 
 endif;
+
+if (sysCallNo == 11) then
+	
+	// implementation of Getpid() system call
+	
+	[physicalSP - 2] = (PTBR - 1024) / 8;
+	ireturn;	// WHAT'S THE CASE FOR FAILURE?
+	
+endif;
