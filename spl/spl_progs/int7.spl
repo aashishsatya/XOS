@@ -4,6 +4,8 @@
 // it will be stored in location SP - 1
 // since code is executing in kernel mode, convert to physical address first
 
+print "In INT 7";
+
 alias physicalSP S0;
 physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
 
@@ -12,21 +14,49 @@ physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
 alias sysCallNo S1;
 sysCallNo = [physicalSP - 1];
 
+alias counter S4;
+alias nextPID S2;
+
+alias PID S8;
+PID = (PTBR - 1024) / 8;
 
 if (sysCallNo == 10) then
+	
+	// Exit() needs to signal other processes to wake up
+	print "PID_EXIT:";
+	print PID;
+	counter = 0;
+	while (counter < 32) do
+		if ([READY_LIST + 32 * counter + 1] == 100 + PID) then
+			print "bullseye";
+			print counter;
+			print (100 + PID);
+			[READY_LIST + 32 * counter + 1] = 1;	// set process state to ready
+		endif;
+		counter = counter + 1;	
+	endwhile;
+	
+endif;
 
-	// implementation of Exit()
+if (sysCallNo == 10 || sysCallNo == 13) then
+	
+	// common code to reduce code duplication
 	
 	// search for any ready process in ready list
 	
-	alias nextPID S2;
 	nextPID = 0;
 	while (nextPID < 32) do
 		if ([READY_LIST + 32 * nextPID + 1] == 1) then
 			break;
 		endif;
 		nextPID = nextPID + 1;
-	endwhile;
+	endwhile;	
+	
+endif;
+
+if (sysCallNo == 10) then
+
+	// implementation of Exit()
 	
 	if (nextPID == 32) then
 		// no more processes in ready list
@@ -37,11 +67,9 @@ if (sysCallNo == 10) then
 	// we have a process to be executed
 	
 	alias currentPCB S3;
-	currentPCB = READY_LIST + ((PTBR - 1024) / 8) * 32; // (PTBR - 1024) / 8) is PID of the current process
+	currentPCB = READY_LIST + PID * 32;
 	
 	// close all open instances of files by current process
-	
-	alias counter S4;
 		
 	counter = 0;
 	while (counter < 8) do
@@ -80,7 +108,39 @@ if (sysCallNo == 10) then
 		// set auxiliary info to not valid
 		[PTBR + counter * 2 + 1] = "00";
 		counter = counter + 1;
-	endwhile;
+	endwhile;	
+
+endif;
+
+if (sysCallNo == 13) then
+	
+	// implementation of Wait() system call
+	
+	// get the PID of the process to be waited for
+	alias waitingPID S7;
+	waitingPID = [physicalSP - 3];
+	
+	// check if the process we're waiting for is running or terminated
+	if ([READY_LIST + 32 * waitingPID + 1] == 0 || [READY_LIST + 32 * waitingPID + 1] == 2) then
+		// error, process is waiting for itself
+		[physicalSP - 2] = -1;
+		ireturn;
+	endif;
+	
+	// change the STATE field of the current process to 100 + waitingPID
+	print "changed";
+	print "state of";
+	print PID;
+	print "to";
+	print (100 + waitingPID);
+	[READY_LIST + PID * 32 + 1] = 100 + waitingPID;
+	
+endif;
+
+if (sysCallNo == 10 || sysCallNo == 13) then
+
+	// find and set up the next ready process
+	// required PID will be stored in nextPID
 	
 	// we've already found out the next 'ready' process
 	// load its context as in timer.spl (copied)
@@ -124,7 +184,10 @@ if (sysCallNo == 10) then
 	// set the state field of the new process to running
 	[newPCB + 1] = 2;
 	
-	// transfer control to the new process
-	ireturn;
-
 endif;
+
+print "sysCallNo:";
+print sysCallNo;
+print "PID_EXIT2:";
+print PID;
+ireturn;
