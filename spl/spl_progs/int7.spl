@@ -130,14 +130,7 @@ if (sysCallNo == 13) then
 	// change the STATE field of the current process to 100 + waitingPID
 	[READY_LIST + PID * 32 + 1] = 100 + waitingPID;
 	
-endif;
-
-if (sysCallNo == 13) then
-
 	// Wait() needs to store the context of the current process
-
-	// set the state field for the current PCB 
-	[currentPCB + 1] = 1; // Set STATE to READY
 
 	// store back the current registers to the PCB of the current process
 	// store BP and SP - 1
@@ -174,7 +167,7 @@ if (sysCallNo == 13) then
 	[currentPCB + 14] = R7;
 
 	// OK, saved state of current process
-
+	
 endif;
 
 if (sysCallNo == 10 || sysCallNo == 13) then
