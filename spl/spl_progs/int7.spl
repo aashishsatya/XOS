@@ -4,8 +4,6 @@
 // it will be stored in location SP - 1
 // since code is executing in kernel mode, convert to physical address first
 
-print "In INT 7";
-
 alias physicalSP S0;
 physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
 
@@ -20,21 +18,26 @@ alias nextPID S2;
 alias PID S8;
 PID = (PTBR - 1024) / 8;
 
-if (sysCallNo == 10) then
+alias currentPCB S3;
+currentPCB = READY_LIST + PID * 32;
+
+if (sysCallNo == 10 || sysCallNo == 14) then
 	
-	// Exit() needs to signal other processes to wake up
-	print "PID_EXIT:";
-	print PID;
+	// Exit() and Signal() needs to signal other processes to wake up
 	counter = 0;
 	while (counter < 32) do
 		if ([READY_LIST + 32 * counter + 1] == 100 + PID) then
-			print "bullseye";
-			print counter;
-			print (100 + PID);
 			[READY_LIST + 32 * counter + 1] = 1;	// set process state to ready
 		endif;
 		counter = counter + 1;	
 	endwhile;
+	
+	if (sysCallNo == 14) then
+		// this is all that Signal() needs to do
+		// so just return
+		[physicalSP - 2] = 0;
+		ireturn;
+	endif;
 	
 endif;
 
@@ -65,9 +68,6 @@ if (sysCallNo == 10) then
 	endif;
 	
 	// we have a process to be executed
-	
-	alias currentPCB S3;
-	currentPCB = READY_LIST + PID * 32;
 	
 	// close all open instances of files by current process
 		
@@ -128,13 +128,53 @@ if (sysCallNo == 13) then
 	endif;
 	
 	// change the STATE field of the current process to 100 + waitingPID
-	print "changed";
-	print "state of";
-	print PID;
-	print "to";
-	print (100 + waitingPID);
 	[READY_LIST + PID * 32 + 1] = 100 + waitingPID;
 	
+endif;
+
+if (sysCallNo == 13) then
+
+	// Wait() needs to store the context of the current process
+
+	// set the state field for the current PCB 
+	[currentPCB + 1] = 1; // Set STATE to READY
+
+	// store back the current registers to the PCB of the current process
+	// store BP and SP - 1
+	// SP - 1 because when an interrupt occurs, the value of IP is stored
+	// automatically on the top of the stack and SP is incremented
+	// hence SP - 1 is the correct value.
+
+	[currentPCB + 2] = BP;
+	[currentPCB + 3] = SP - 1;
+
+	// next we need to set the IP field
+	// when a timer occurs IP value gets stored in the stack
+	// the timer interrupt routine should fetch this value from the 
+	// stack and save it in the PCB of the current process
+	// you will have to convert from logical to physical address because
+	// once the interrupt is fired you're in the KERNEL mode
+
+	// IP of the current process is on top of the stack
+	// save this value
+	[currentPCB + 4] = [physicalSP];
+
+	// set PTBR and PTLR
+	[currentPCB + 5] = PTBR;
+	[currentPCB + 6] = PTLR;
+
+	// back up the value of registers R0-R7
+	[currentPCB + 7] = R0;
+	[currentPCB + 8] = R1;
+	[currentPCB + 9] = R2;
+	[currentPCB + 10] = R3;
+	[currentPCB + 11] = R4;
+	[currentPCB + 12] = R5;
+	[currentPCB + 13] = R6;
+	[currentPCB + 14] = R7;
+
+	// OK, saved state of current process
+
 endif;
 
 if (sysCallNo == 10 || sysCallNo == 13) then
@@ -186,8 +226,4 @@ if (sysCallNo == 10 || sysCallNo == 13) then
 	
 endif;
 
-print "sysCallNo:";
-print sysCallNo;
-print "PID_EXIT2:";
-print PID;
 ireturn;
