@@ -32,15 +32,12 @@ if (sysCallNo == 1) then
 	
 	while (FATIndex < 64) do
 		
-		if ([FAT + FATIndex * 8] == fileName) then
-		
+		if ([FAT + FATIndex * 8] == fileName) then		
 			// return after setting status value zero
 			// return value is stored in SP - 2
-			[physicalSP - 2] = 0;
-			
+			[physicalSP - 2] = 0;			
 			// return back
-			ireturn;
-			
+			ireturn;			
 		endif;
 		
 		FATIndex = FATIndex + 1;	
@@ -57,7 +54,7 @@ if (sysCallNo == 1) then
 	// 447 because the remaining space is used as swap area
 	
 	alias DFListIndex S4;	// Disk Free List Index
-	DFListIndex = 0;
+	DFListIndex = 24;
 	
 	while (DFListIndex < 447) do		
 		if ([FAT + 512 + DFListIndex] == 0) then		
@@ -76,7 +73,7 @@ if (sysCallNo == 1) then
 		
 	FATIndex = 0;
 	while (FATIndex < 64) do	
-		if ([FAT + FATIndex * 8 + 2] == -1) then
+		if ([FAT + FATIndex * 8 + 2] == -1) then	// checking block number of basic block
 			break;		
 		endif;		
 		FATIndex = FATIndex + 1;	
@@ -141,25 +138,19 @@ if (sysCallNo == 4) then
 	// each FAT entry takes 8 words
 	
 	while (FATIndex < 64) do
-	
-		if ([FAT + FATIndex * 8] == fileName) then
 		
+		if ([FAT + FATIndex * 8] == fileName) then		
 			// break and then process
-			break;			
-			
-		endif;
-		
+			break;						
+		endif;		
 		FATIndex = FATIndex + 1;	
-		
+			
 	endwhile;
 	
-	if (FATIndex == 64) then
-	
-		// file does not exist
-			
+	if (FATIndex == 64) then	
+		// file does not exist			
 		[physicalSP - 2] = -1;
-		ireturn;
-	
+		ireturn;	
 	endif;
 	
 	// now search the System-Wide Open File Table for the Index
@@ -170,12 +161,10 @@ if (sysCallNo == 4) then
 	
 	while (SWOFTIndex < 64) do
 	
-		if ([SWOFTIndex * 2 + FILE_TABLE] == FATIndex) then
-		
+		if ([SWOFTIndex * 2 + FILE_TABLE] == FATIndex) then		
 			// we have the corresponding SWOFT Entry
 			// break and proceed
-			break;
-			
+			break;			
 		endif;
 		
 		SWOFTIndex = SWOFTIndex + 1;
@@ -249,9 +238,11 @@ if (sysCallNo == 4) then
 		counter = counter + 1;	
 	endwhile;
 	store(1, [FAT + FATIndex * 8 + 2]);
+	[3072 + [FAT + FATIndex * 8 + 2]] = 0;	// mark basic block as free
 	
 	// invalidate the FAT entry
 	[FAT + FATIndex * 8] = -1;
+	[FAT + FATIndex * 8 + 1] = 0;	// size
 	[FAT + FATIndex * 8 + 2] = -1;
 	
 	// store back the FAT and Disk Free List from the memory to disk
