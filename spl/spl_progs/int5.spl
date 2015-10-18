@@ -16,24 +16,31 @@ alias PID S9;
 PID = (PTBR - 1024) / 8;
 
 if (sysCallNo == 8) then
+	
+	print "fork start";
 
 	// implementation of Fork() system call
 	
 	// find a PCB in the ready list of PCBs
 	// newPID is index of the PCB (say PCBIndex)
 	alias newPID S2;
-	newPID = 0;
-	while (newPID < 32) do
-		if ([READY_LIST + newPID * 32 + 1] == 0) then
+	newPID = PID + 1;
+	while (newPID % 32 != PID) do
+		if ([READY_LIST + (newPID % 32) * 32 + 1] == 0) then
 			break;
 		endif;
 		newPID = newPID + 1;	
 	endwhile;
 	
-	if (newPID == 32) then
+	newPID = newPID % 32;
+	
+	if (newPID == PID) then
 		[physicalSP - 2] = -1;
 		ireturn;
 	endif;
+	
+	//print "pid:";
+	//print newPID;
 	
 	// set the PID of the child process to that value
 	[READY_LIST + newPID * 32] = newPID;
@@ -191,6 +198,8 @@ if (sysCallNo == 8) then
 	alias childPhysicalSP S8;
 	childPhysicalSP = ([childPTBR + 2 * ((SP - 1) / 512)] * 512) + ((SP - 1) % 512);
 	[childPhysicalSP - 1] = -2;
+	
+	print "fork done";
 	
 	ireturn;
 	
