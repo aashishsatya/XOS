@@ -28,8 +28,6 @@ alias counter S3;
 
 if (sysCallNo == 9) then
 
-	print "exec start";
-
 	// Exec() system call
 	
 	// check if file exists
@@ -63,62 +61,50 @@ if (sysCallNo == 9) then
 		ireturn;
 	endif;
 	
-	// deallocate old pages
-	
-	counter = 0;
-	
-	while (counter < 3) do
-	
-		print "before_if";
-	
-		if ([PTBR + counter * 2 + 1] == "01" || [PTBR + counter * 2 + 1] == "11") then
-			// update entry in memory list
-			print "x:";
-			print [PTBR + counter * 2];
-			[MEM_LIST + [PTBR + counter * 2]] = 0;
-			print "passed";
-			// update entry in PTBR
-			[PTBR + counter * 2 + 1] = "00";
-			[PTBR + counter * 2] = -1;
-			print "all";	
-		endif;
-		
-		counter = counter + 1;
-		
-	endwhile;
-	
 	// allocate new pages
 	
 	// but first check if there's enough space in memory free list
 	
 	alias newPagesCount S7;
 	newPagesCount = countCodeBlocksNew;
-	counter = 0;
+	counter = 25;
 	while (counter < 64) do
-		print "check mem_list";
 		if ([MEM_LIST + counter] == 0) then
 			newPagesCount = newPagesCount - 1;
 			if (newPagesCount == 0) then
 				break;
 			endif;
 		endif;
-		print "no free";
 		counter = counter + 1;
 	endwhile;
 	if (counter == 64) then
 		// not enough memory
-		print "no_mem";
 		[physicalSP - 2] = -1;
-		print "no bad addr";
-		breakpoint;
 		ireturn;
 	endif;
 	
-	// we have enough memory
-	// allot new memory for page table
+	// we have enough memory, so we can safely deallocate old pages
+	
+	counter = 0;
+	
+	while (counter < 3) do
+	
+		if ([PTBR + counter * 2 + 1] == "01" || [PTBR + counter * 2 + 1] == "11") then
+			// update entry in memory list
+			[MEM_LIST + [PTBR + counter * 2]] = 0;
+			// update entry in PTBR
+			[PTBR + counter * 2 + 1] = "00";
+			[PTBR + counter * 2] = -1;
+		endif;
+		
+		counter = counter + 1;
+		
+	endwhile;
+	
+	// now allot new memory for page table
 		
 	newPagesCount = 0;
-	counter = 0;
+	counter = 25;
 		
 	while (counter < 64 && newPagesCount < countCodeBlocksNew) do
 	
@@ -137,8 +123,6 @@ if (sysCallNo == 9) then
 		counter = counter + 1;
 			
 	endwhile;
-	
-	print "before load";
 	
 	// load the basic block onto the OS scratchpad
 	load(1, [FAT + FATIndex * 8 + 2]);
@@ -178,8 +162,6 @@ if (sysCallNo == 9) then
 	// store zero on top of the stack
 	physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
 	[physicalSP] = 0;
-	
-	print "exec done";
 	
 	ireturn;	// WHAT ABOUT THE RETURN VALUE?
 

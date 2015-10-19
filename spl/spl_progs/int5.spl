@@ -36,14 +36,12 @@ if (sysCallNo == 8) then
 	
 	if (newPID == PID) then
 		[physicalSP - 2] = -1;
+		print "no_pid_err";
 		ireturn;
 	endif;
 	
 	//print "pid:";
 	//print newPID;
-	
-	// set the PID of the child process to that value
-	[READY_LIST + newPID * 32] = newPID;
 	
 	// duplicate the valid pages in memory of the currently
 	// executing parent process
@@ -68,7 +66,7 @@ if (sysCallNo == 8) then
 	
 	// check if there exists same number of free pages in Memory Free list
 	
-	counter = 0;
+	counter = 25;
 	
 	alias freePagesCount S5;
 	freePagesCount = 0;
@@ -85,6 +83,7 @@ if (sysCallNo == 8) then
 	if (freePagesCount < parentPageCount) then
 		// not enough memory
 		[physicalSP - 2] = -1;
+		print "fork_no_mem";
 		ireturn;
 	endif;
 	
@@ -107,6 +106,7 @@ if (sysCallNo == 8) then
 			// so set the child process to reflect the same
 			// child PTBR will be 1024 + newPID * 8
 			[childPTBR + counter * 2 + 1] = "00";
+			[childPTBR + counter * 2] = -1;
 			// skip the rest of the code
 			counter = counter + 1;
 			continue;
@@ -116,7 +116,7 @@ if (sysCallNo == 8) then
 				
 		// find the next free page in memory
 		
-		freePageIndex = 0;
+		freePageIndex = 25;
 		while (freePageIndex < 64) do
 			if ([MEM_LIST + freePageIndex] == 0) then
 				break;
@@ -149,6 +149,9 @@ if (sysCallNo == 8) then
 	endwhile;
 	
 	// set up entries of the child process' PCB
+	
+	// set the PID of the child process to that value
+	[READY_LIST + newPID * 32] = newPID;
 	
 	// set BP
 	[READY_LIST + newPID * 32 + 2] = BP;
