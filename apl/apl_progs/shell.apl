@@ -25,6 +25,10 @@ integer main()
 				print("Error.");
 				break;
 			endif;
+		endif;
+		
+		if (pid == -1) then
+			print("FORK_ERR_SHELL");
 		endif;		
 		
 		print("AashShell>");

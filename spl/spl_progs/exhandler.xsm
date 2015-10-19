@@ -1,5 +1,10 @@
 START
+BRKP
 MOV T0,  "Exception"
+OUT T0
+MOV T0,  "EFR:"
+OUT T0
+MOV T0, EFR
 OUT T0
 HALT
 HALT

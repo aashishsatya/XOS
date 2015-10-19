@@ -48,26 +48,12 @@ if (sysCallNo == 9) then
 		// file does not exist			
 		[physicalSP - 2] = -1;
 		ireturn;	
-	endif;
-	
-	// load the basic block onto the OS scratchpad
-	load(1, [FAT + FATIndex * 8 + 2]);
+	endif;	
 	
 	// count the number of code blocks of the new program
 	alias countCodeBlocksNew S5;
-	countCodeBlocksNew = 0;
-	counter = 0;
-	while (counter < 256) do
-		// NOTE: The condition [SCRATCHPAD + counter] != -1 has NOT been used because
-		// for some reason loading using the --exec parameter creates only three entries
-		// in the basic block of the file (as is right if the file was a proper executable)
-		// here we're actually checking if the parameter to Exec() is indeed an executable
-		// so I guess we have no option but to loop 256 times
-		if ([SCRATCHPAD + counter] > 0 && [SCRATCHPAD + counter] < 512) then
-			countCodeBlocksNew = countCodeBlocksNew + 1;
-		endif;
-		counter = counter + 1;
-	endwhile;
+	countCodeBlocksNew = [FAT + FATIndex * 8 + 1];	// size
+	countCodeBlocksNew = countCodeBlocksNew / 512;	// size by 512 gives number of pages
 	
 	if (countCodeBlocksNew > 3) then
 		// invalid file, program can have only three pages of code
@@ -75,73 +61,71 @@ if (sysCallNo == 9) then
 		ireturn;
 	endif;
 	
-	// find the number of valid page table entries for the old process
-	alias validCodeBlocksOld S6;
-	validCodeBlocksOld = 0;
+	// allocate new pages
 	
-	counter = 0;
-	while (counter < 3) do	// three because 4th one is needed anyway for the stack
-		if ([PTBR + counter * 2 + 1] == "01" || [PTBR + counter * 2 + 1] == "11") then
-			validCodeBlocksOld = validCodeBlocksOld + 1;
+	// but first check if there's enough space in memory free list
+	
+	alias newPagesCount S7;
+	newPagesCount = countCodeBlocksNew;
+	counter = 25;
+	while (counter < 64) do
+		if ([MEM_LIST + counter] == 0) then
+			newPagesCount = newPagesCount - 1;
+			if (newPagesCount == 0) then
+				break;
+			endif;
 		endif;
 		counter = counter + 1;
 	endwhile;
-	
-	if (validCodeBlocksOld > countCodeBlocksNew) then
-		// deallocate the last few page tables as (un)necessary
-		while (validCodeBlocksOld != countCodeBlocksNew) do
-			validCodeBlocksOld = validCodeBlocksOld - 1;	// this step needs to be done first
-			// this is because validCodeBlocksOld could be 3, and we don't want to invalidate the
-			// 6th and 7th entries in the page table (they're for the stack)
-			[PTBR + validCodeBlocksOld * 2 + 1] = "00";
-			[PTBR + validCodeBlocksOld * 2] = -1;
-		endwhile;
+	if (counter == 64) then
+		// not enough memory
+		[physicalSP - 2] = -1;
+		ireturn;
 	endif;
 	
-	if (validCodeBlocksOld < countCodeBlocksNew) then
+	// we have enough memory, so we can safely deallocate old pages
 	
-		// we need to allocate a few more blocks
-		// but first check if there's enough space in memory free list
-		alias newPagesCount S7;
-		newPagesCount = countCodeBlocksNew - validCodeBlocksOld;
-		counter = 0;
-		while (counter < 64 && newPagesCount > 0) do
-			if ([MEM_LIST + counter] == 0) then
-				newPagesCount = newPagesCount - 1;
-			endif;
-			counter = counter + 1;
-		endwhile;
-		if (counter == 64) then
-			// not enough memory
-			[physicalSP - 2] = -1;
-			ireturn;
+	counter = 0;
+	
+	while (counter < 3) do
+	
+		if ([PTBR + counter * 2 + 1] == "01" || [PTBR + counter * 2 + 1] == "11") then
+			// update entry in memory list
+			[MEM_LIST + [PTBR + counter * 2]] = 0;
+			// update entry in PTBR
+			[PTBR + counter * 2 + 1] = "00";
+			[PTBR + counter * 2] = -1;
 		endif;
 		
-		// allot new memory for page table
+		counter = counter + 1;
 		
-		newPagesCount = countCodeBlocksNew - validCodeBlocksOld;
-		counter = 0;
+	endwhile;
+	
+	// now allot new memory for page table
 		
-		while (counter < 64 && newPagesCount > 0) do
+	newPagesCount = 0;
+	counter = 25;
 		
-			if ([MEM_LIST + counter] != 0) then	// block already used
-				counter = counter + 1;
-				continue;
-			endif;
-			
-			// unused block, allocate
-			
-			[MEM_LIST + counter] = 1;
-			[PTBR + (countCodeBlocksNew - newPagesCount) * 2] = counter;
-			[PTBR + (countCodeBlocksNew - newPagesCount) * 2 + 1] = "01";
-			
-			newPagesCount = newPagesCount - 1;	// careful, this order is important too
-						
+	while (counter < 64 && newPagesCount < countCodeBlocksNew) do
+	
+		if ([MEM_LIST + counter] == 1) then	// block already used
 			counter = counter + 1;
+			continue;
+		endif;
 			
-		endwhile;
-		
-	endif;
+		// unused block, allocate
+			
+		[MEM_LIST + counter] = 1;
+		[PTBR + newPagesCount * 2] = counter;
+		[PTBR + newPagesCount * 2 + 1] = "01";
+			
+		newPagesCount = newPagesCount + 1;					
+		counter = counter + 1;
+			
+	endwhile;
+	
+	// load the basic block onto the OS scratchpad
+	load(1, [FAT + FATIndex * 8 + 2]);
 		
 	// required pages have been allocated
 	// load the blocks of the program into pages of the current process
@@ -178,6 +162,7 @@ if (sysCallNo == 9) then
 	// store zero on top of the stack
 	physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
 	[physicalSP] = 0;
+	
 	ireturn;	// WHAT ABOUT THE RETURN VALUE?
 
 endif;
@@ -193,7 +178,7 @@ endif;
 
 if (sysCallNo == 12) then
 	
-	// validate parent entry (can it be otherwise?)
+	// validate parent entry (can it ever be otherwise?)
 	if ([currentPCB + 31] < 0 || [currentPCB + 31] > 31) then
 		[physicalSP - 2] = -1;
 		ireturn;

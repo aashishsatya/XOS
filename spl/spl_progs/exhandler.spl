@@ -1,0 +1,5 @@
+breakpoint;
+print "Exception";
+print "EFR:";
+print EFR;
+halt;
