@@ -16,8 +16,6 @@ alias PID S9;
 PID = (PTBR - 1024) / 8;
 
 if (sysCallNo == 8) then
-	
-	print "fork start";
 
 	// implementation of Fork() system call
 	
@@ -36,12 +34,8 @@ if (sysCallNo == 8) then
 	
 	if (newPID == PID) then
 		[physicalSP - 2] = -1;
-		print "no_pid_err";
 		ireturn;
 	endif;
-	
-	//print "pid:";
-	//print newPID;
 	
 	// duplicate the valid pages in memory of the currently
 	// executing parent process
@@ -83,7 +77,6 @@ if (sysCallNo == 8) then
 	if (freePagesCount < parentPageCount) then
 		// not enough memory
 		[physicalSP - 2] = -1;
-		print "fork_no_mem";
 		ireturn;
 	endif;
 	
@@ -201,8 +194,6 @@ if (sysCallNo == 8) then
 	alias childPhysicalSP S8;
 	childPhysicalSP = ([childPTBR + 2 * ((SP - 1) / 512)] * 512) + ((SP - 1) % 512);
 	[childPhysicalSP - 1] = -2;
-	
-	print "fork done";
 	
 	ireturn;
 	
