@@ -65,6 +65,21 @@ if (sysCallNo == 9) then
 	
 	// but first check if there's enough space in memory free list
 	
+	// but before checking set the pages used by the current process as free
+	// (as these will also be available)
+	
+	counter = 0;
+	while (counter < 3) do
+		if ([PTBR + counter * 2 + 1] == "01" || [PTBR + counter * 2 + 1] == "11") then
+			// page is currently being used
+			// set it as free in memory free list
+			[MEM_LIST + [PTBR + counter * 2]] = 0;
+		endif;
+		counter = counter + 1;
+	endwhile;
+	
+	// now check for free pages
+	
 	alias newPagesCount S7;
 	newPagesCount = countCodeBlocksNew;
 	counter = 25;
@@ -77,8 +92,17 @@ if (sysCallNo == 9) then
 		endif;
 		counter = counter + 1;
 	endwhile;
+	
 	if (counter == 64) then
 		// not enough memory
+		// so set the pages used by the current process back as used in the 
+		// memory free list
+		counter = 0;	// NOTE: COUNTER IS BEING MODIFIED!!
+		while (counter < 3) do
+			[MEM_LIST + [PTBR + counter * 2 + 1]] = 1;
+			counter = counter + 1;
+		endwhile;
+		// return signaling error
 		[physicalSP - 2] = -1;
 		ireturn;
 	endif;
@@ -90,8 +114,7 @@ if (sysCallNo == 9) then
 	while (counter < 3) do
 	
 		if ([PTBR + counter * 2 + 1] == "01" || [PTBR + counter * 2 + 1] == "11") then
-			// update entry in memory list
-			[MEM_LIST + [PTBR + counter * 2]] = 0;
+			// update entry in memory list (already done)
 			// update entry in PTBR
 			[PTBR + counter * 2 + 1] = "00";
 			[PTBR + counter * 2] = -1;
