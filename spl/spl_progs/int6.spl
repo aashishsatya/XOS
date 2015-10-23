@@ -99,7 +99,12 @@ if (sysCallNo == 9) then
 		// memory free list
 		counter = 0;	// NOTE: COUNTER IS BEING MODIFIED!!
 		while (counter < 3) do
-			[MEM_LIST + [PTBR + counter * 2 + 1]] = 1;
+			if ([PTBR + counter * 2 + 1] == "01" || [PTBR + counter * 2 + 1] == "11") then
+				// page was originally being used
+				// but it is marked as free in memory free list
+				// so update the entry
+				[MEM_LIST + [PTBR + counter * 2]] = 1;
+			endif;
 			counter = counter + 1;
 		endwhile;
 		// return signaling error
