@@ -2,7 +2,6 @@ integer main()
 {
 	integer childpid, retval;
 	childpid = Fork();
-	print("Fork done");
 	if(childpid == -2) then
 		retval = Exec("sample.xsm");
 	else
