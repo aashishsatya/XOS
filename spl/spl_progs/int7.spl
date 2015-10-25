@@ -100,13 +100,21 @@ if (sysCallNo == 10) then
 			counter = counter + 1;
 			continue;
 		endif;
-		// valid page table
-		// set memory location as free in memory list
-		[MEM_LIST + [PTBR + counter * 2]] = 0;
-		// invalidate entries in PTBR
+		// check if page table is valid
+		if ([PTBR + counter * 2 + 1] == "01" || [PTBR + counter * 2 + 1] == "11") then
+			// decrement count in memory free list
+			[MEM_LIST + [PTBR + counter * 2]] = [MEM_LIST + [PTBR + counter * 2]] - 1;
+		endif;
+		if ([PTBR + counter * 2 + 1] == "00" && [PTBR + counter * 2] > 447) then
+			// swap block
+			// decrement disk free list entry for this block
+			[DISK_LIST + [PTBR + counter * 2]] = [DISK_LIST + [PTBR + counter * 2]] - 1;
+			// commit the disk free list back into the disk
+			store(6, 20);
+		endif;
+		// no need to check for the disk block case since we're invalidating all entries anyway
 		[PTBR + counter * 2] = -1;
-		// set auxiliary info to not valid
-		[PTBR + counter * 2 + 1] = "00";
+		[PTBR + counter * 2 + 1] = "00";			
 		counter = counter + 1;
 	endwhile;	
 

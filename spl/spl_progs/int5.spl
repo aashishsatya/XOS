@@ -37,105 +37,73 @@ if (sysCallNo == 8) then
 		ireturn;
 	endif;
 	
-	// duplicate the valid pages in memory of the currently
-	// executing parent process
-	
-	// count the number of valid pages used by the parent process
-	
-	alias parentPageCount S3;
-	parentPageCount = 0;
+	// check if there is one page free in memory
 	
 	alias counter S4;
-	counter = 0;
-	
-	// if PTLR is not exactly 4
-	// THIS WOULD FAIL!!
-	
-	while (counter < 4) do
-		if ([PTBR + counter * 2 + 1] == "01" || [PTBR + counter * 2 + 1] == "11") then
-			parentPageCount = parentPageCount + 1;
-		endif;
-		counter = counter + 1;
-	endwhile;
-	
-	// check if there exists same number of free pages in Memory Free list
-	
 	counter = 25;
 	
-	alias freePagesCount S5;
-	freePagesCount = 0;
+	alias newStackLocation S3;
+	
 	while (counter < 64) do
-		if([MEM_LIST + counter] == 0) then
-			freePagesCount = freePagesCount + 1;
-		endif;
-		if (freePagesCount == parentPageCount) then
+		if ([MEM_LIST + counter] == 0) then
+			newStackLocation = counter;
+			[MEM_LIST + counter] = 1;
 			break;
 		endif;
 		counter = counter + 1;
 	endwhile;
 	
-	if (freePagesCount < parentPageCount) then
-		// not enough memory
+	if (counter == 64) then
+		// no enough memory for even stack
+		// return with error
 		[physicalSP - 2] = -1;
 		ireturn;
 	endif;
 	
-	// reusing S5, don't panic
-	alias freePageIndex S5;
+	//alias freePageIndex S5;
 	alias wordIndex S6;	// to copy from one page to another
+	
+	// copy the stack
+	
+	wordIndex = 0;
+	while (wordIndex < 512) do
+		[newStackLocation * 512 + wordIndex] = [[PTBR + 6] * 512 + wordIndex];
+		wordIndex = wordIndex + 1;
+	endwhile;
 	
 	alias childPTBR S7;
 	childPTBR = 1024 + newPID * 8;
+	
+	// set fourth entry of child's PTBR as stack
+	[childPTBR + 6] = newStackLocation;
+	[childPTBR + 7] = "01";	
+	
+	// update other entries of child's PTBR
+	
 	counter = 0;
 	
-	// we are assured that there exists enough free pages in memory
-	// note: again, if PTLR isn't exactly four
-	// THIS WILL FAIL!!
+	while (counter < 3) do
 	
-	while (counter < 4) do
-	
-		if ([PTBR + counter * 2 + 1] == "00") then
-			// memory page hasn't been allocated
-			// so set the child process to reflect the same
-			// child PTBR will be 1024 + newPID * 8
-			[childPTBR + counter * 2 + 1] = "00";
-			[childPTBR + counter * 2] = -1;
-			// skip the rest of the code
-			counter = counter + 1;
-			continue;
+		// copy the entries in the page table of parent's process
+		// to that of child's process
+		
+		[childPTBR + counter * 2] = [PTBR + counter * 2];
+		[childPTBR + counter * 2 + 1] = [PTBR + counter * 2 + 1];
+		
+		// update memory free list to indicate sharing
+		
+		if ([PTBR + counter * 2 + 1] == "01" || [PTBR + counter * 2 + 1] == "11") then
+			[MEM_LIST + [PTBR + counter * 2]] = [MEM_LIST + [PTBR + counter * 2]] + 1;
 		endif;
 		
-		// otherwise we have a valid page to copy
-				
-		// find the next free page in memory
-		
-		freePageIndex = 25;
-		while (freePageIndex < 64) do
-			if ([MEM_LIST + freePageIndex] == 0) then
-				break;
-			endif;
-			freePageIndex = freePageIndex + 1;
-		endwhile;
-		
-		// assuming there will exist a valid free page index if
-		// the program gets this far in the code
-		
-		// set the index of the memory page as used
-		[MEM_LIST + freePageIndex] = 1;
-		
-		// copy the pages
-		
-		wordIndex = 0;
-		while (wordIndex < 512) do
-			// freePageIndex * 512 will be the physical address of the new page
-			// [PTBR + counter * 2] will be the physical page number of the old page
-			[freePageIndex * 512 + wordIndex] = [[PTBR + counter * 2] * 512 + wordIndex];
-			wordIndex = wordIndex + 1;
-		endwhile;
-		
-		// update the physical page number field and other entries
-		[childPTBR + counter * 2] = freePageIndex;
-		[childPTBR + counter * 2 + 1] = [PTBR + counter * 2 + 1];
+		if ([PTBR + counter * 2 + 1] == "00" && [PTBR + counter * 2] > 447) then
+			// indicates that code page resides in the disk in the swap area
+			// at this block number
+			[DISK_LIST + [PTBR + counter * 2]] = [DISK_LIST + [PTBR + counter * 2]] + 1;
+			// this is used to indicate that the swap block is now shared by more than one process
+			// commit the disk free list back into the disk from memory
+			store(6, 20);
+		endif;
 		
 		counter = counter + 1;
 		
