@@ -41,6 +41,9 @@ if (sysCallNo == 8) then
 		ireturn;
 	endif;
 	
+	alias childPTBR S7;
+	childPTBR = 1024 + newPID * 8;
+	
 	// check if there is one page free in memory
 	
 	alias counter S4;
@@ -64,7 +67,7 @@ if (sysCallNo == 8) then
 		// need to select a victim page 
 		
 		// find the entry that lead to the exception
-		startPTEntry = PTBR - 1018;	// PTBR - 1024 + 6
+		startPTEntry = childPTBR - 1018;	// 1018 = 1024 - 6
 		
 		while (TRUE == 1) do
 			
@@ -108,7 +111,7 @@ if (sysCallNo == 8) then
 							// mark swap disk block as used
 							[DISK_LIST + swapPageIndex] = 1;
 							// store the index of the obtained page 
-							newStackLocation = [MEM_LIST + [PAGE_TABLE + PTEntryCounter]];
+							newStackLocation = [PAGE_TABLE + PTEntryCounter];
 							// mark PTBR entry to point to swap block
 							[PAGE_TABLE + PTEntryCounter] = swapPageIndex;
 							// set auxiliary information of page as invalid
@@ -165,9 +168,6 @@ if (sysCallNo == 8) then
 		[newStackLocation * 512 + wordIndex] = [[PTBR + 6] * 512 + wordIndex];
 		wordIndex = wordIndex + 1;
 	endwhile;
-	
-	alias childPTBR S7;
-	childPTBR = 1024 + newPID * 8;
 	
 	// set fourth entry of child's PTBR as stack
 	[childPTBR + 6] = newStackLocation;

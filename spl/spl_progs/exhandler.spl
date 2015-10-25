@@ -111,7 +111,7 @@ if (counter == 64) then
 						// mark swap disk block as used
 						[DISK_LIST + swapPageIndex] = 1;
 						// store the index of the obtained page 
-						freePageIndex = [MEM_LIST + [PAGE_TABLE + PTEntryCounter]];
+						freePageIndex = [PAGE_TABLE + PTEntryCounter];
 						// mark PTBR entry to point to swap block
 						[PAGE_TABLE + PTEntryCounter] = swapPageIndex;
 						// set auxiliary information of page as invalid
