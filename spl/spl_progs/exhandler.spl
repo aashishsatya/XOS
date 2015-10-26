@@ -14,7 +14,7 @@ BadVAddr = (EFR / 10) % 100;    // Gets value of BadVAddr
 IPAddress = (EFR / 1000);		//Gets value of IP at the point
 VPagenum = [PTBR + BadVAddr * 2];
 
-print "inside";
+print "inside_handler";
 
 if (Cause != 0) then
 	print "ERROR_UNREC";
@@ -58,8 +58,6 @@ if (VPagenum == -1) then
 endif;
 
 // try to find a free page
-
-print "finding_free_pg";
 
 counter = 25;
 while (counter < 64) do
@@ -216,5 +214,5 @@ SP = SP + 1;
 alias physicalSP S10;
 physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
 [physicalSP] = IPAddress;
-print "done";
+print "done_exhandler";
 ireturn;

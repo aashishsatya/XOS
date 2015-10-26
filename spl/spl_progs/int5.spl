@@ -24,7 +24,6 @@ if (sysCallNo == 8) then
 	alias newPID S2;
 	newPID = PID + 1;
 	while ((newPID % 32) != PID) do
-		//print "loop1";
 		if ([READY_LIST + (newPID % 32) * 32 + 1] == 0) then
 			break;
 		endif;
@@ -38,6 +37,9 @@ if (sysCallNo == 8) then
 		ireturn;
 	endif;
 	
+	print "newPID_fork:";
+	print newPID;
+	
 	// check if there is one page free in memory
 	
 	alias counter S4;
@@ -46,11 +48,6 @@ if (sysCallNo == 8) then
 	alias newStackLocation S3;
 	
 	while (counter < 64) do
-		//print "loop 2";
-		if (counter == 63) then
-			print "counter_63:";
-			print [MEM_LIST + counter];
-		endif;
 		if ([MEM_LIST + counter] == 0) then
 			newStackLocation = counter;
 			[MEM_LIST + counter] = 1;
@@ -77,7 +74,6 @@ if (sysCallNo == 8) then
 	
 	wordIndex = 0;
 	while (wordIndex < 512) do
-		//print "loop3";
 		[newStackLocation * 512 + wordIndex] = [[PTBR + 6] * 512 + wordIndex];
 		wordIndex = wordIndex + 1;
 	endwhile;
@@ -94,8 +90,6 @@ if (sysCallNo == 8) then
 	counter = 0;
 	
 	while (counter < 3) do
-		
-		//print "loop4";
 	
 		// copy the entries in the page table of parent's process
 		// to that of child's process
@@ -125,7 +119,7 @@ if (sysCallNo == 8) then
 	// set up entries of the child process' PCB
 	
 	alias childPCB S10;
-	childPCB = childPCB;
+	childPCB = READY_LIST + newPID * 32;
 	
 	// set the PID of the child process to that value
 	[childPCB] = newPID;
@@ -158,19 +152,14 @@ if (sysCallNo == 8) then
 	
 	counter = 0;
 	while (counter < 8) do
-		//print "loop5";
-		//print "step1";
 		[childPCB + 15 + counter * 2] = [READY_LIST + PID * 32 + 15 + counter * 2];	// pointer to SWOFT
-		//print "step2";
 		[childPCB + 15 + counter * 2 + 1] = [READY_LIST + PID * 32 + 15 + counter * 2 + 1];	// LSEEK position
-		//print "step3";
 		// increment the file open count in SWOFT
 		// [READY_LIST + PID * 32 + 15 + counter * 2] is SWOFT Index
 		if ([childPCB + 15 + counter * 2] != -1) then
 			// entry is valid
 			[FILE_TABLE + [childPCB + 15 + counter * 2] * 2 + 1] = [FILE_TABLE + [childPCB + 15 + counter * 2] * 2 + 1] + 1;
 		endif;
-		//print "step4";
 		counter = counter + 1;
 	endwhile;
 	

@@ -56,7 +56,10 @@ if (sysCallNo == 10 || sysCallNo == 13) then
 			break;
 		endif;
 		nextPID = nextPID + 1;
-	endwhile;	
+	endwhile;
+	
+	print "nextPID:";
+	print nextPID;	
 	
 endif;
 
