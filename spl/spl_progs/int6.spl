@@ -26,6 +26,8 @@ currentPCB = READY_LIST + 32 * PID;
 
 alias counter S3;
 
+print "inside_int6";
+
 if (sysCallNo == 9) then
 
 	// Exec() system call
@@ -65,7 +67,7 @@ if (sysCallNo == 9) then
 	while (counter < 3) do
 		if ([PTBR + counter * 2 + 1] == "01" || [PTBR + counter * 2 + 1] == "11") then
 			// decrement count in the memory free list
-			[MEM_LIST + [PTBR + counter * 2]] = [MEM_LIST + [PTBR + counter * 2]] + 1;
+			[MEM_LIST + [PTBR + counter * 2]] = [MEM_LIST + [PTBR + counter * 2]] - 1;
 		endif;
 		if ([PTBR + counter * 2 + 1] == "00" && [PTBR + counter * 2] > 447) then
 			[DISK_LIST + [PTBR + counter * 2]] = [DISK_LIST + [PTBR + counter * 2]] - 1;
