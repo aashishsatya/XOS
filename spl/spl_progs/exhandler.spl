@@ -14,18 +14,18 @@ BadVAddr = (EFR / 10) % 100;    // Gets value of BadVAddr
 IPAddress = (EFR / 1000);		//Gets value of IP at the point
 VPagenum = [PTBR + BadVAddr * 2];
 
-print "inside_handler";
+//print "inside_handler";
 
 if (Cause != 0) then
-	print "ERROR_UNREC";
-	print "Cause:";
-	print Cause;
-	print "BadVAddr:";
-	print BadVAddr;
-	print "IPAddress:";
-	print IPAddress;
-	print "VPagenum";
-	print VPagenum;
+	//print "ERROR_UNREC";
+	//print "Cause:";
+	//print Cause;
+	//print "BadVAddr:";
+	//print BadVAddr;
+	//print "IPAddress:";
+	//print IPAddress;
+	//print "VPagenum";
+	//print VPagenum;
 	breakpoint;
 	// do the same things you would do for exit??
 	inline "PUSH BP";
@@ -38,12 +38,12 @@ if (Cause != 0) then
 	inline "MOV R0, 10";	// default Exit() call
 	inline "PUSH R0";
 	inline "JMP 11776";
-	print "EXIT_NOT_DONE";
+	//print "EXIT_NOT_DONE";
 endif;
 
 if (VPagenum == -1) then
 	// invalid page
-	print "PAGE_INVALID";
+	//print "PAGE_INVALID";
 	inline "PUSH BP";
 	inline "MOV BP, SP";
 	inline "MOV R0, 10";
@@ -54,7 +54,7 @@ if (VPagenum == -1) then
 	inline "MOV R0, 10";	// default Exit() call
 	inline "PUSH R0";
 	inline "JMP 11776";
-	print "EXIT_NOT_DONE";
+	//print "EXIT_NOT_DONE";
 endif;
 
 // try to find a free page
@@ -124,7 +124,7 @@ if (counter == 64) then
 						// mark swap disk block as used
 						[DISK_LIST + swapPageIndex] = 1;
 						// store the index of the obtained page 
-						freePageIndex = [MEM_LIST + [PAGE_TABLE + PTEntryCounter]];
+						freePageIndex = [PAGE_TABLE + PTEntryCounter];
 						// mark PTBR entry to point to swap block
 						[PAGE_TABLE + PTEntryCounter] = swapPageIndex;
 						// set auxiliary information of page as invalid
@@ -137,7 +137,7 @@ if (counter == 64) then
 				if (swapPageIndex == 512) then
 					// no place to swap the page to
 					// make the process exit
-					print "NO_FREE_SWAP";
+					//print "NO_FREE_SWAP";
 					inline "PUSH BP";
 					inline "MOV BP, SP";
 					inline "MOV R0, 10";
@@ -153,8 +153,8 @@ if (counter == 64) then
 				if (swapPageIndex != 512) then
 					// we have a valid page index stored in freePageIndex
 					// break out
-					print "swapping to:";
-					print swapPageIndex;
+					//print "swapping to:";
+					//print swapPageIndex;
 					break;
 				endif;					
 					
@@ -176,8 +176,8 @@ if (counter == 64) then
 		if (PTEntryCounter != startPTEntry) then
 			// we have a valid page index stored in freePageIndex
 			// so we can stop executing the loop
-			print "current entry:";
-			print PTEntryCounter;
+			//print "current entry:";
+			//print PTEntryCounter;
 			break;
 		endif;
 		
@@ -186,9 +186,9 @@ if (counter == 64) then
 endif;
 
 // come hail or sun, we have a memory location stored in freePageIndex
-print "chose:";
-print freePageIndex;
-print "for code";
+//print "chose:";
+//print freePageIndex;
+//print "for code";
 
 // check if the physical page number is a disk or swap block number
 
@@ -214,5 +214,5 @@ SP = SP + 1;
 alias physicalSP S10;
 physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
 [physicalSP] = IPAddress;
-print "done_exhandler";
+//print "done_exhandler";
 ireturn;

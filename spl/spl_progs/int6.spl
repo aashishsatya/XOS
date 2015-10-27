@@ -26,7 +26,7 @@ currentPCB = READY_LIST + 32 * PID;
 
 alias counter S3;
 
-print "inside_int6";
+//print "inside_int6";
 
 if (sysCallNo == 9) then
 

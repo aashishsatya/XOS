@@ -7,7 +7,7 @@
 alias physicalSP S0;
 physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
 
-print "inside_int7";
+//print "inside_int7";
 
 // find out the system call number
 
@@ -38,7 +38,7 @@ if (sysCallNo == 10 || sysCallNo == 14) then
 		// this is all that Signal() needs to do
 		// so just return
 		[physicalSP - 2] = 0;
-		print "out_int7_1";
+		//print "out_int7_1";
 		ireturn;
 	endif;
 	
@@ -58,8 +58,8 @@ if (sysCallNo == 10 || sysCallNo == 13) then
 		nextPID = nextPID + 1;
 	endwhile;
 	
-	print "nextPID:";
-	print nextPID;	
+	//print "nextPID:";
+	//print nextPID;	
 	
 endif;
 
@@ -138,7 +138,7 @@ if (sysCallNo == 13) then
 	if ([READY_LIST + 32 * waitingPID + 1] == 0 || [READY_LIST + 32 * waitingPID + 1] == 2) then
 		// error, process is waiting for itself
 		[physicalSP - 2] = -1;
-		print "out_int7_2";
+		//print "out_int7_2";
 		ireturn;
 	endif;
 	
@@ -233,5 +233,5 @@ if (sysCallNo == 10 || sysCallNo == 13) then
 	[newPCB + 1] = 2;
 	
 endif;
-print "out_int7_3";
+//print "out_int7_3";
 ireturn;

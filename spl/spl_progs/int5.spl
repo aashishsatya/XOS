@@ -15,6 +15,12 @@ sysCallNo = [physicalSP - 1];
 alias PID S9;
 PID = (PTBR - 1024) / 8;
 
+alias startPTEntry S15;
+alias PTEntryCounter S14;
+alias swapPageIndex S13;
+alias TRUE S12;
+TRUE = 1;
+
 if (sysCallNo == 8) then
 
 	// implementation of Fork() system call
@@ -37,8 +43,11 @@ if (sysCallNo == 8) then
 		ireturn;
 	endif;
 	
-	print "newPID_fork:";
-	print newPID;
+	//print "newPID_fork:";
+	//print newPID;
+	
+	alias childPTBR S7;
+	childPTBR = 1024 + newPID * 8;
 	
 	// check if there is one page free in memory
 	
@@ -57,15 +66,107 @@ if (sysCallNo == 8) then
 	endwhile;
 	
 	if (counter == 64) then
-		// no enough memory for even stack
-		// return with error
-		[physicalSP - 2] = -1;
-		ireturn;
+	
+		// no memory entry free
+		// so swap one into disk and proceed
+		// need to select a victim page 
+		
+		// find the entry that lead to the exception
+		startPTEntry = childPTBR - 1018;	// 1018 = 1024 - 6
+		
+		while (TRUE == 1) do
+			
+			// keep doing until a victim page is selected
+			
+			// we have to start from the entry that caused the page fault
+			
+			PTEntryCounter = (startPTEntry + 2) % 256;
+			
+			while (PTEntryCounter != startPTEntry) do
+				
+				// check if page is being used for stack
+				if (PTEntryCounter % 8 == 6) then
+					PTEntryCounter = (PTEntryCounter + 2) % 256;
+					continue;
+				endif;
+				
+				// PTEntryCounter now points to the page number entry
+				
+				if ([PAGE_TABLE + PTEntryCounter + 1] == "01") then
+					
+					// we have a potential victim page
+					// check if the memory page is shared or not
+					
+					if ([MEM_LIST + [PAGE_TABLE + PTEntryCounter]] > 1) then
+						// page is shared						
+						// update and continue
+						PTEntryCounter = PTEntryCounter + 2;
+						continue;
+					endif;
+					
+					// we have an actual victim page
+					
+					// scan the memory copy of the disk free list for a free block
+					// in the swap area
+					
+					swapPageIndex = 448;
+					while (swapPageIndex < 512) do
+						if ([DISK_LIST + swapPageIndex] == 0) then
+							store([PAGE_TABLE + PTEntryCounter], swapPageIndex);
+							// mark swap disk block as used
+							[DISK_LIST + swapPageIndex] = 1;
+							// store the index of the obtained page 
+							newStackLocation = [PAGE_TABLE + PTEntryCounter];
+							// mark PTBR entry to point to swap block
+							[PAGE_TABLE + PTEntryCounter] = swapPageIndex;
+							// set auxiliary information of page as invalid
+							[PAGE_TABLE + PTEntryCounter + 1] = "00";
+							break;						
+						endif;
+						swapPageIndex = swapPageIndex + 1;
+					endwhile;
+						
+					if (swapPageIndex == 512) then
+						// no place to swap the page to
+						// make the process exit
+						[physicalSP - 2] = -1;
+						ireturn;
+					endif;
+					
+					if (swapPageIndex != 512) then
+						// we have a valid page index stored in newStackLocation
+						// break out
+						break;
+					endif;					
+						
+				endif;
+				
+				if ([PAGE_TABLE + PTEntryCounter + 1] == "11") then
+					
+					// change auxiliary information
+					// i.e. give second chance
+					
+					[PAGE_TABLE + PTEntryCounter + 1] = "01";
+					
+				endif;
+				
+				PTEntryCounter = (PTEntryCounter + 2) % 256;		
+				
+			endwhile;
+			
+			if (PTEntryCounter != startPTEntry) then
+				// we have a valid page index stored in newStackLocation
+				// so we can stop executing the loop
+				break;
+			endif;
+			
+		endwhile;
+		
 	endif;
 	
-	print "chose:";
-	print newStackLocation;
-	print "for stack";
+	//print "chose:";
+	//print newStackLocation;
+	//print "for stack";
 	
 	//alias freePageIndex S5;
 	alias wordIndex S6;	// to copy from one page to another
@@ -77,9 +178,6 @@ if (sysCallNo == 8) then
 		[newStackLocation * 512 + wordIndex] = [[PTBR + 6] * 512 + wordIndex];
 		wordIndex = wordIndex + 1;
 	endwhile;
-	
-	alias childPTBR S7;
-	childPTBR = 1024 + newPID * 8;
 	
 	// set fourth entry of child's PTBR as stack
 	[childPTBR + 6] = newStackLocation;
@@ -176,7 +274,7 @@ if (sysCallNo == 8) then
 	childPhysicalSP = ([childPTBR + 2 * ((SP - 1) / 512)] * 512) + ((SP - 1) % 512);
 	[childPhysicalSP - 1] = -2;
 	
-	print "done_fork";
+	//print "done_fork";
 	
 	ireturn;
 	
