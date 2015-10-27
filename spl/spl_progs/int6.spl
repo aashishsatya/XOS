@@ -61,80 +61,42 @@ if (sysCallNo == 9) then
 		ireturn;
 	endif;
 	
-	// allocate new pages
-	
-	// but first check if there's enough space in memory free list
-	
-	alias newPagesCount S7;
-	newPagesCount = countCodeBlocksNew;
-	counter = 25;
-	while (counter < 64) do
-		if ([MEM_LIST + counter] == 0) then
-			newPagesCount = newPagesCount - 1;
-			if (newPagesCount == 0) then
-				break;
-			endif;
-		endif;
-		counter = counter + 1;
-	endwhile;
-	if (counter == 64) then
-		// not enough memory
-		[physicalSP - 2] = -1;
-		ireturn;
-	endif;
-	
-	// we have enough memory, so we can safely deallocate old pages
-	
 	counter = 0;
-	
 	while (counter < 3) do
-	
 		if ([PTBR + counter * 2 + 1] == "01" || [PTBR + counter * 2 + 1] == "11") then
-			// update entry in memory list
-			[MEM_LIST + [PTBR + counter * 2]] = 0;
-			// update entry in PTBR
-			[PTBR + counter * 2 + 1] = "00";
-			[PTBR + counter * 2] = -1;
+			// decrement count in the memory free list
+			[MEM_LIST + [PTBR + counter * 2]] = [MEM_LIST + [PTBR + counter * 2]] + 1;
 		endif;
-		
+		if ([PTBR + counter * 2 + 1] == "00" && [PTBR + counter * 2] > 447) then
+			[DISK_LIST + [PTBR + counter * 2]] = [DISK_LIST + [PTBR + counter * 2]] - 1;
+		endif;
 		counter = counter + 1;
-		
 	endwhile;
 	
-	// now allot new memory for page table
-		
-	newPagesCount = 0;
-	counter = 25;
-		
-	while (counter < 64 && newPagesCount < countCodeBlocksNew) do
-	
-		if ([MEM_LIST + counter] == 1) then	// block already used
-			counter = counter + 1;
-			continue;
-		endif;
-			
-		// unused block, allocate
-			
-		[MEM_LIST + counter] = 1;
-		[PTBR + newPagesCount * 2] = counter;
-		[PTBR + newPagesCount * 2 + 1] = "01";
-			
-		newPagesCount = newPagesCount + 1;					
-		counter = counter + 1;
-			
-	endwhile;
+	// set the PTBR as disk block numbers of the new program
 	
 	// load the basic block onto the OS scratchpad
 	load(1, [FAT + FATIndex * 8 + 2]);
-		
-	// required pages have been allocated
-	// load the blocks of the program into pages of the current process
-		
+	
+	// store details about valid pages of code in the PTBR
 	counter = 0;
 	while (counter < countCodeBlocksNew) do
-		load([PTBR + counter * 2], [SCRATCHPAD + counter]);
+		[PTBR + counter * 2] = [SCRATCHPAD + counter];
+		[PTBR + counter * 2 + 1] = "00";
 		counter = counter + 1;
 	endwhile;
+	
+	// invalidate other entries in PTBR
+	// counter would already have been at the required PTBR entry
+	// (the one that is to be invalidated)
+	while (counter < 3) do
+		[PTBR + counter * 2] = -1;
+		[PTBR + counter * 2 + 1] = "00";
+		counter = counter + 1;
+	endwhile;
+	
+	// change the auxiliary entry for the stack
+	[PTBR + 7] = "01";	
 		
 	// close all files opened by the current process
 		
