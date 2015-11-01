@@ -28,18 +28,23 @@ if (sysCallNo == 8) then
 	// find a PCB in the ready list of PCBs
 	// newPID is index of the PCB (say PCBIndex)
 	alias newPID S2;
-	newPID = (PID + 1) % 32;
-	while (newPID != PID) do
-		if ([READY_LIST + newPID * 32 + 1] == 0) then
+	newPID = PID + 1;
+	while ((newPID % 32) != PID) do
+		if ([READY_LIST + (newPID % 32) * 32 + 1] == 0) then
 			break;
 		endif;
-		newPID = (newPID + 1) % 32;	
+		newPID = newPID + 1;	
 	endwhile;
+	
+	newPID = newPID % 32;
 	
 	if (newPID == PID) then
 		[physicalSP - 2] = -1;
 		ireturn;
 	endif;
+	
+	//print "newPID_fork:";
+	//print newPID;
 	
 	alias childPTBR S7;
 	childPTBR = 1024 + newPID * 8;
@@ -159,6 +164,11 @@ if (sysCallNo == 8) then
 		
 	endif;
 	
+	//print "chose:";
+	//print newStackLocation;
+	//print "for stack";
+	
+	//alias freePageIndex S5;
 	alias wordIndex S6;	// to copy from one page to another
 	
 	// copy the stack
@@ -206,47 +216,53 @@ if (sysCallNo == 8) then
 	
 	// set up entries of the child process' PCB
 	
+	alias childPCB S10;
+	childPCB = READY_LIST + newPID * 32;
+	
 	// set the PID of the child process to that value
-	[READY_LIST + newPID * 32] = newPID;
+	[childPCB] = newPID;
 	
 	// set BP
-	[READY_LIST + newPID * 32 + 2] = BP;
+	[childPCB + 2] = BP;
 	// set SP
 	// SP - 1 is used because the child process does not have the IP stored in its stack
-	[READY_LIST + newPID * 32 + 3] = SP - 1;
+	[childPCB + 3] = SP - 1;
 	// set IP
 	// same as the IP of parent process because it is logical address
-	[READY_LIST + newPID * 32 + 4] = [physicalSP];
+	[childPCB + 4] = [physicalSP];
 	// set PTBR
-	[READY_LIST + newPID * 32 + 5] = childPTBR;
+	[childPCB + 5] = childPTBR;
 	// set PTLR
-	[READY_LIST + newPID * 32 + 6] = 4;	
+	[childPCB + 6] = 4;	
 	// set R0 through R7
-	[READY_LIST + newPID * 32 + 7] = R0;
-	[READY_LIST + newPID * 32 + 8] = R1;
-	[READY_LIST + newPID * 32 + 9] = R2;
-	[READY_LIST + newPID * 32 + 10] = R3;
-	[READY_LIST + newPID * 32 + 11] = R4;
-	[READY_LIST + newPID * 32 + 12] = R5;
-	[READY_LIST + newPID * 32 + 13] = R6;
-	[READY_LIST + newPID * 32 + 14] = R7;
+	[childPCB + 7] = R0;
+	[childPCB + 8] = R1;
+	[childPCB + 9] = R2;
+	[childPCB + 10] = R3;
+	[childPCB + 11] = R4;
+	[childPCB + 12] = R5;
+	[childPCB + 13] = R6;
+	[childPCB + 14] = R7;
 	// set the parent PID
-	[READY_LIST + newPID * 32 + 31] = PID;
+	[childPCB + 31] = PID;
 	
 	// PPOFT
 	
 	counter = 0;
 	while (counter < 8) do
-		[READY_LIST + newPID * 32 + 15 + counter * 2] = [READY_LIST + PID * 32 + 15 + counter * 2];	// pointer to SWOFT
-		[READY_LIST + newPID * 32 + 16 + counter * 2] = [READY_LIST + PID * 32 + 16 + counter * 2];	// LSEEK position
+		[childPCB + 15 + counter * 2] = [READY_LIST + PID * 32 + 15 + counter * 2];	// pointer to SWOFT
+		[childPCB + 15 + counter * 2 + 1] = [READY_LIST + PID * 32 + 15 + counter * 2 + 1];	// LSEEK position
 		// increment the file open count in SWOFT
 		// [READY_LIST + PID * 32 + 15 + counter * 2] is SWOFT Index
-		[FILE_TABLE + [READY_LIST + PID * 32 + 15 + counter * 2] * 2 + 1] = [FILE_TABLE + [READY_LIST + PID * 32 + 15 + counter * 2] * 2 + 1] + 1;
+		if ([childPCB + 15 + counter * 2] != -1) then
+			// entry is valid
+			[FILE_TABLE + [childPCB + 15 + counter * 2] * 2 + 1] = [FILE_TABLE + [childPCB + 15 + counter * 2] * 2 + 1] + 1;
+		endif;
 		counter = counter + 1;
 	endwhile;
 	
 	// set STATE of child to READY
-	[READY_LIST + newPID * 32 + 1] = 1;
+	[childPCB + 1] = 1;
 	
 	// set up return values
 	
@@ -257,6 +273,8 @@ if (sysCallNo == 8) then
 	alias childPhysicalSP S8;
 	childPhysicalSP = ([childPTBR + 2 * ((SP - 1) / 512)] * 512) + ((SP - 1) % 512);
 	[childPhysicalSP - 1] = -2;
+	
+	//print "done_fork";
 	
 	ireturn;
 	

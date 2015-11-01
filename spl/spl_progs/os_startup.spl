@@ -168,13 +168,23 @@ endwhile;
 store(6, 20);
 
 // initialize all PCBs with STATE field zero
+alias PPOFTIndex S1; // to initialize entries in PPOFT to -1
+
 
 counter = 0;
 while (counter < 32) do
 	// 32 because there can be 32 processes in memory
 	[READY_LIST + counter * 32 + 1] = 0;
+	PPOFTIndex = 0;
+	while (PPOFTIndex < 8) do
+		[READY_LIST + counter * 32 + 15 + PPOFTIndex * 2] = -1;
+		[READY_LIST + counter * 32 + 15 + PPOFTIndex * 2 + 1] = -1;
+		PPOFTIndex = PPOFTIndex + 1;
+	endwhile;
 	counter = counter + 1;
 endwhile;
+
+
 
 // when there are more than one process in memory, the running process is
 // identified by looking at the STATE field in the Ready List of PCBs
