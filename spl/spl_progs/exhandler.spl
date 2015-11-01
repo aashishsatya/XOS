@@ -14,47 +14,22 @@ BadVAddr = (EFR / 10) % 100;    // Gets value of BadVAddr
 IPAddress = (EFR / 1000);		//Gets value of IP at the point
 VPagenum = [PTBR + BadVAddr * 2];
 
-//print "inside_handler";
+alias physicalSP S10;
+physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
+
 
 if (Cause != 0) then
-	//print "ERROR_UNREC";
-	//print "Cause:";
-	//print Cause;
-	//print "BadVAddr:";
-	//print BadVAddr;
-	//print "IPAddress:";
-	//print IPAddress;
-	//print "VPagenum";
-	//print VPagenum;
-	breakpoint;
 	// do the same things you would do for exit??
-	inline "PUSH BP";
-	inline "MOV BP, SP";
-	inline "MOV R0, 10";
-	inline "PUSH R0";
+	SP = SP + 1;
+	[physicalSP] = 10;
 	inline "JMP 11776";
-	// executed only if exit fails
-	inline "POP R0";
-	inline "MOV R0, 10";	// default Exit() call
-	inline "PUSH R0";
-	inline "JMP 11776";
-	//print "EXIT_NOT_DONE";
 endif;
 
 if (VPagenum == -1) then
 	// invalid page
-	//print "PAGE_INVALID";
-	inline "PUSH BP";
-	inline "MOV BP, SP";
-	inline "MOV R0, 10";
-	inline "PUSH R0";
+	SP = SP + 1;
+	[physicalSP] = 10;
 	inline "JMP 11776";
-	// executed only if exit fails
-	inline "POP R0";
-	inline "MOV R0, 10";	// default Exit() call
-	inline "PUSH R0";
-	inline "JMP 11776";
-	//print "EXIT_NOT_DONE";
 endif;
 
 // try to find a free page
@@ -137,24 +112,14 @@ if (counter == 64) then
 				if (swapPageIndex == 512) then
 					// no place to swap the page to
 					// make the process exit
-					//print "NO_FREE_SWAP";
-					inline "PUSH BP";
-					inline "MOV BP, SP";
-					inline "MOV R0, 10";
-					inline "PUSH R0";
-					inline "JMP 11776";
-					// executed only if exit fails
-					inline "POP R0";
-					inline "MOV R0, 10";	// default Exit() call
-					inline "PUSH R0";
+					SP = SP + 1;
+					[physicalSP] = 10;
 					inline "JMP 11776";
 				endif;
 				
 				if (swapPageIndex != 512) then
 					// we have a valid page index stored in freePageIndex
 					// break out
-					//print "swapping to:";
-					//print swapPageIndex;
 					break;
 				endif;					
 					
@@ -176,8 +141,6 @@ if (counter == 64) then
 		if (PTEntryCounter != startPTEntry) then
 			// we have a valid page index stored in freePageIndex
 			// so we can stop executing the loop
-			//print "current entry:";
-			//print PTEntryCounter;
 			break;
 		endif;
 		
@@ -186,9 +149,6 @@ if (counter == 64) then
 endif;
 
 // come hail or sun, we have a memory location stored in freePageIndex
-//print "chose:";
-//print freePageIndex;
-//print "for code";
 
 // check if the physical page number is a disk or swap block number
 
@@ -211,8 +171,6 @@ endif;
 
 // increment SP by 1 and store IP value 
 SP = SP + 1;
-alias physicalSP S10;
 physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
 [physicalSP] = IPAddress;
-//print "done_exhandler";
 ireturn;
